@@ -127,6 +127,21 @@ h2.sec{font-family:var(--f-d);font-size:15px;font-weight:700;margin:0;display:fl
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
 .grid2.eq{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+/* ---- tables de données (vue tableur) ---- */
+.grid-t{max-height:72vh;overflow:auto}
+.grid-t table{font-size:12.5px}
+.grid-t th{position:sticky;top:0;z-index:2}
+.grid-t td{white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.grid-t th:first-child,.grid-t td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);border-right:1px solid var(--line)}
+.grid-t th:first-child{z-index:3;background:var(--sunk)}
+.grid-t tbody tr{cursor:pointer}
+.grid-t tbody tr:hover td,.grid-t tbody tr:focus-visible td{background:var(--accent-soft)}
+/* ---- saisie rapide ---- */
+.qh{font-family:var(--f-m);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 0}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.qbtn{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:11px 12px;cursor:pointer;text-align:left;font-size:13.5px;font-weight:600}
+.qbtn:hover{border-color:var(--accent)}
+.qbtn svg{width:18px;height:18px;color:var(--accent);flex:none}
 @media (max-width:1100px){.grid2,.grid2.eq{grid-template-columns:minmax(0,1fr)}}
 .tw{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-size:12.8px}
@@ -227,6 +242,9 @@ td.act{white-space:nowrap;text-align:right}
   #bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
   #bnav button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;font-size:10.5px;color:var(--muted);cursor:pointer;border-radius:8px}
   #bnav button svg{width:20px;height:20px}
+  #bnav .pc{width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;margin-top:-20px;box-shadow:0 4px 14px rgba(0,0,0,.25);border:3px solid var(--surface)}
+  #bnav .plus{color:var(--accent);font-weight:600}
+  #saisir{display:none}
   #bnav button.on{color:var(--accent);font-weight:600}
 }
 @media (max-width:640px){
@@ -242,7 +260,7 @@ td.act{white-space:nowrap;text-align:right}
   .rt td.act{justify-content:flex-end;padding-top:6px}
   .rt td.act::before{content:none}
   .rt tbody tr:hover td{background:none}
-  .vh .acts{width:100%}.vh .acts .btn{flex:1;justify-content:center}
+  .vh .acts{width:100%}.vh .acts .btn{flex:1;justify-content:center}.vh .acts select{flex-basis:100%}
   .tanks{grid-template-columns:minmax(0,1fr)}
   .chartbox{height:240px}
   .dlg-f .btn{flex:1;justify-content:center}
@@ -271,6 +289,7 @@ td.act{white-space:nowrap;text-align:right}
       <select id="site" class="inp" aria-label="Filtrer par site"><option value="all">Tous les sites</option></select>
     </div>
     <div class="tbtns">
+      <button id="saisir" class="btn pri" data-quick title="Nouvelle saisie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Saisir</button>
       <button id="exp" class="sq" title="Exporter toutes les données vers Excel" aria-label="Exporter vers Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h11l5 5v13H4z"/><path d="M14 3v6h6M8 13l4 5M12 13l-4 5"/></svg></button>
       <button id="theme" class="sq" title="Thème clair ou sombre" aria-label="Changer de thème"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
       <button id="bell" class="sq" title="Alertes" aria-label="Alertes" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="badge" id="bell-n"></span></button>
@@ -293,7 +312,7 @@ td.act{white-space:nowrap;text-align:right}
 (function(){
 'use strict';
 /* ================================================================ état */
-const VERSION='0.3';
+const VERSION='0.3.1';
 const COLLS=['produits','cuves','clients','fournisseurs','commandes','cargaisons','receptions','sorties','jaugeages','camions','chauffeurs','employes','paie','factures','paiements','depenses','maintenance','config'];
 const D={}; COLLS.forEach(c=>D[c]=[]);
 const IDX={}; COLLS.forEach(c=>IDX[c]=new Map());
@@ -302,7 +321,7 @@ let db=null, canWrite=true, dbState='loading', lastSync=null;
 const CFG_DEF={nom:'Dépôt pétrolier',adresse:'',contact:'',devise:'USD',tva:0,retenue:8,tolerance:0.5,hse_mois:12,rupture_jours:10,site1:'Terminal portuaire – cuves louées',site2:'Dépôt de bitume',site3:''};
 let CFG=Object.assign({},CFG_DEF), TOL=0.005, HSE_MOIS=12;
 const SITES=[CFG_DEF.site1,CFG_DEF.site2];
-const S={route:'dashboard',q:'',site:'all',period:30,aper:30,from:null,to:null,limit:100};
+const S={route:'dashboard',q:'',site:'all',period:30,aper:30,from:null,to:null,limit:100,tbl:'receptions'};
 const CH={};
 let MEMO=new Map();
 
@@ -343,6 +362,7 @@ function reindex(){COLLS.forEach(c=>{const m=new Map();D[c].forEach(r=>m.set(r.i
 
 const I={ /* icônes */
  dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
+ grid:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>',
  chart:'<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>',
  book:'<path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h8M8 12h6"/>',
  loss:'<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.01"/>',
@@ -626,7 +646,7 @@ const L={
 
 /* ================================================================ navigation */
 const NAV=[
- ['Pilotage',[['dashboard','Tableau de bord','dash'],['analyse','Analyse des stocks','chart'],['livre','Livre des stocks','book'],['pertes','Pertes et écarts','loss']]],
+ ['Pilotage',[['dashboard','Tableau de bord','dash'],['donnees','Tables de données','grid'],['analyse','Analyse des stocks','chart'],['livre','Livre des stocks','book'],['pertes','Pertes et écarts','loss']]],
  ['Stockage',[['cuves','Parc de cuves','tank'],['jaugeages','Jaugeages','gauge']]],
  ['Approvisionnement',[['commandes','Commandes fournisseur','order'],['cargaisons','Cargaisons et navires','ship']]],
  ['Mouvements',[['receptions','Réceptions (entrées)','in'],['sorties','Sorties et chargements','out']]],
@@ -651,7 +671,7 @@ function buildMenu(){
   const A=alerts();
   $('#menu').innerHTML=NAV.map(([g,items])=>{const closed=CLOSED.has(g)&&!items.some(x=>x[0]===S.route);
     return `<div class="grp${closed?' closed':''}"><button class="grp-t" data-grp="${esc(g)}" aria-expanded="${!closed}">${esc(g)}${ic('chev')}</button>${items.map(([k,t,i])=>`<button class="mi${S.route===k?' on':''}" data-r="${k}">${ic(i)}<span>${esc(t)}</span>${k==='dashboard'&&A.length?`<span class="cnt">${A.length}</span>`:''}</button>`).join('')}</div>`}).join('');
-  $('#bnav').innerHTML=[['dashboard','Accueil','dash'],['cuves','Cuves','tank'],['receptions','Entrées','in'],['sorties','Sorties','out'],['__menu','Menu','menu']].map(([k,t,i])=>`<button data-${k==='__menu'?'menu':'r'}="${k}" class="${S.route===k?'on':''}">${ic(i)}<span>${t}</span></button>`).join('');
+  $('#bnav').innerHTML=[['dashboard','Accueil','dash'],['cuves','Cuves','tank'],['__quick','Saisir','plus'],['donnees','Tables','grid'],['__menu','Menu','menu']].map(([k,t,i])=>k==='__quick'?`<button data-quick class="plus"><span class="pc">${ic(i)}</span><span>${t}</span></button>`:`<button data-${k==='__menu'?'menu':'r'}="${k}" class="${S.route===k?'on':''}">${ic(i)}<span>${t}</span></button>`).join('');
   $('#bell-n').textContent=A.length?String(A.length):'';
 }
 function go(r){S.route=r;S.q='';S.limit=100;$('#q').value='';try{localStorage.setItem('ps_route',r)}catch(e){}closeSide();closeNotif();render();window.scrollTo(0,0)}
@@ -920,6 +940,32 @@ function vAnalyse(){
    <tfoot><tr><td>Total</td>${['ins','outs','cif','ec','fac','enc','ach','dep','sal'].map(k=>`<td class="num">${fmt(M.reduce((a,r)=>a+r[k],0),k==='ec'?1:0)}</td>`).join('')}</tr></tfoot></table></div>`;
 }
 
+/* ---------------------------------------------------------------- tables de données (vue tableur) */
+const dec=x=>{const s=String(x);const i=s.indexOf('.');return i<0?0:Math.min(3,s.length-i-1)};
+function rawVal(f,v){
+  if(v===null||v===undefined||v==='')return '<span class="sub">–</span>';
+  if(f.t==='ref'){const r=get(f.ref,v);return r?esc(LAB[f.ref](r)):`<span class="sub">${esc(v)} (introuvable)</span>`}
+  if(f.t==='date')return fd(v);if(f.t==='dt')return fdt(v);if(f.t==='month')return esc(fm(v));
+  if(f.t==='bool')return v?'Oui':'Non';if(f.t==='num')return fmt(v,dec(v));if(f.t==='color')return dot(v)+esc(v);
+  return esc(v);
+}
+function vDonnees(){
+  const e=emptyDb();const c=SCH[S.tbl]?S.tbl:'receptions';const sch=SCH[c];
+  const opts=NAV.map(([g,items])=>{const it=items.filter(([k])=>SCH[k]);return it.length?`<optgroup label="${esc(g)}">${it.map(([k,t])=>`<option value="${k}"${k===c?' selected':''}>${esc(t)} (${D[k].length})</option>`).join('')}</optgroup>`:''}).join('');
+  const cols=[...(sch.pre?[{k:'numero',l:'N°',t:'text'}]:[]),...sch.fields];
+  const rows=D[c].slice();if(L[c]&&L[c].sort)rows.sort(L[c].sort);
+  const q=S.q.trim().toLowerCase();
+  let body=rows.map(r=>({r,h:cols.map(f=>rawVal(f,r[f.k]))}));if(q)body=body.filter(x=>strip(x.h.join(' ')).toLowerCase().includes(q));
+  const n=body.length;const shown=body.slice(0,S.limit);
+  return vh('Tables de données','Toutes les données enregistrées, table par table, comme dans un tableur. Touchez une ligne pour la modifier ; « Ajouter une ligne » pour saisir.',
+    `<select id="tblsel" class="inp" aria-label="Choisir la table">${opts}</select>${addBtn(c,'Ajouter une ligne')}<button class="btn" data-sys="xltable">${ic('dl')}Excel</button>`)+
+   (e||(!rows.length?`<div class="panel empty"><b>Table vide</b>Utilisez « Ajouter une ligne » pour saisir le premier enregistrement.</div>`:
+   `<p class="sub" style="margin:0">${fmt(n)} ligne(s)${q?` contenant « ${esc(S.q)} »`:''} · ${cols.length+1} colonnes · faites glisser le tableau pour voir toutes les colonnes.</p>
+   <div class="tw grid-t"><table><thead><tr>${cols.map(f=>`<th class="${f.t==='num'?'num':''}">${esc(T(f.l))}</th>`).join('')}<th>Modifié le</th></tr></thead><tbody>${
+    shown.map(x=>`<tr data-edit="${c}" data-id="${esc(x.r.id)}" tabindex="0">${x.h.map((h,i)=>`<td class="${cols[i].t==='num'?'num':''}">${h}</td>`).join('')}<td class="sub">${x.r.maj?fd(x.r.maj):'–'}</td></tr>`).join('')
+   }</tbody></table>${n>S.limit?`<div class="more"><button class="btn" data-more>Afficher ${fmt(Math.min(100,n-S.limit))} de plus (${fmt(n-S.limit)} restants)</button></div>`:''}</div>`));
+}
+
 /* ================================================================ configuration et sauvegarde */
 const CFG_F=[
  ['Identité du dépôt',[F('nom','Nom affiché','text',{req:1}),F('adresse','Adresse','text'),F('contact','Contact (téléphone, e-mail)','text')]],
@@ -962,7 +1008,7 @@ async function saveCfg(){
 }
 
 /* ================================================================ rendu */
-const VIEWS={dashboard:vDash,analyse:vAnalyse,cuves:vCuves,livre:vLivre,pertes:vPertes,config:vConfig};
+const VIEWS={dashboard:vDash,donnees:vDonnees,analyse:vAnalyse,cuves:vCuves,livre:vLivre,pertes:vPertes,config:vConfig};
 let pending=false;
 function schedule(){if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;render()})}
 function render(){
@@ -1005,7 +1051,8 @@ function fieldHtml(f,val,rec){
   return `<div class="fld${f.w?' w':''}" data-f="${f.k}"><label for="${id}">${esc(lab)} ${rq}</label>${inp}${f.h?`<span class="h">${esc(f.h)}</span>`:''}</div>`;
 }
 function openForm(coll,rec,preset){
-  if(!canWrite||!db)return;const sch=SCH[coll];
+  if(!canWrite||!db)return;
+  if(coll==='receptions'&&rec&&rec.sortie){toast(`Réception créée par le transfert ${get('sorties',rec.sortie)?.numero||''} : modifiez ce transfert dans les sorties.`);return}const sch=SCH[coll];
   const vals={};sch.fields.forEach(f=>{vals[f.k]=rec?rec[f.k]:(preset&&preset[f.k]!==undefined?preset[f.k]:typeof f.def==='function'?f.def():f.def??(f.t==='sel'?f.opts[0]:''))});
   const title=(rec?'Modifier ':'Nouvelle saisie : ')+sch.one+(rec&&rec.numero?' '+rec.numero:rec&&sch.key?' '+rec[sch.key]:'');
   $('#modal-root').innerHTML=`<div id="modal" role="dialog" aria-modal="true" aria-labelledby="dlgt"><form class="dlg" id="frm" novalidate><div class="dlg-h"><h3 id="dlgt">${esc(title)}</h3><button type="button" class="ib" data-close title="Fermer">${ic('x')}</button></div>
@@ -1070,19 +1117,32 @@ async function save(filename,data,type){
 }
 function sheetOf(rows){return XLSX.utils.json_to_sheet(rows.length?rows:[{}])}
 function monthRows(){return monthly(24).map(r=>({'Mois':fm(r.m),'Entrées (MT)':+r.ins.toFixed(3),'Sorties (MT)':+r.outs.toFixed(3),'Livraisons CIF (MT)':+r.cif.toFixed(3),'Écarts validés (MT)':+r.ec.toFixed(3),[T('Facturé (¤)')]:Math.round(r.fac),[T('Encaissé (¤)')]:Math.round(r.enc),[T('Achats payés (¤)')]:Math.round(r.ach),[T('Dépenses (¤)')]:Math.round(r.dep),[T('Salaires nets (¤)')]:Math.round(r.sal)}))}
+const QUICK=[['Mouvements du jour',[['receptions','Réception (entrée)','in'],['sorties','Sortie ou chargement','out'],['jaugeages','Jaugeage de cuve','gauge']]],
+ ['Approvisionnement',[['commandes','Commande fournisseur','order'],['cargaisons','Cargaison (navire)','ship']]],
+ ['Finances',[['factures','Facture','inv'],['paiements','Paiement','pay'],['depenses','Dépense','cost'],['paie','Fiche de paie','wallet']]],
+ ['Opérations et HSE',[['maintenance','Intervention de maintenance','tool']]],
+ ['Référentiels',[['produits','Produit','drop'],['cuves','Cuve','tank'],['clients','Client ou station','users'],['fournisseurs','Fournisseur','box'],['camions','Camion','truck'],['chauffeurs','Chauffeur','user'],['employes','Employé','id']]]];
+function openQuick(){
+  if(!canWrite||!db){toast('Données en cours de chargement…');return}closeSide();closeNotif();
+  $('#modal-root').innerHTML=`<div id="modal" role="dialog" aria-modal="true" aria-labelledby="qt"><div class="dlg"><div class="dlg-h"><h3 id="qt">Que voulez-vous saisir ?</h3><button class="ib" data-close title="Fermer">${ic('x')}</button></div>
+   <div class="dlg-b" style="grid-template-columns:minmax(0,1fr);gap:8px">${QUICK.map(([g,it])=>`<p class="qh">${esc(g)}</p><div class="qgrid">${it.map(([k,t,i])=>`<button class="qbtn" data-add="${k}">${ic(i)}${esc(t)}</button>`).join('')}</div>`).join('')}</div></div></div>`;
+}
+function rowsOf(c){const sch=SCH[c];return D[c].slice().sort(L[c]?.sort||(()=>0)).map(r=>{const o={};if(r.numero)o['N°']=r.numero;sch.fields.forEach(f=>{let v=r[f.k];if(f.t==='ref')v=get(f.ref,v)?LAB[f.ref](get(f.ref,v)):'';if(f.t==='bool')v=v?'Oui':'Non';o[T(f.l)]=v??''});
+    if(c==='receptions')o['Tonnes (MT)']=+recInfo(r).mt.toFixed(3);if(c==='sorties')o['Tonnes (MT)']=+sorInfo(r).mt.toFixed(3);
+    if(c==='jaugeages'){o['Volume théorique (m³)']=r.volume_theorique;o['Écart (m³)']=+jauInfo(r).e.toFixed(3)}
+    if(c==='cargaisons'){const i=cgoInfo(r);o[T('Surestaries (¤)')]=Math.round(i.msur);o['Écart (MT)']=i.ecart===null?'':+i.ecart.toFixed(3)}
+    if(c==='factures'){const i=facInfo(r);o['Volume (m³)']=+i.vol.toFixed(3);o['Quantité facturée']=+i.qte.toFixed(3);o['Unité']=i.u;o[T('Total TTC (¤)')]=+i.ttc.toFixed(2);o[T('Payé (¤)')]=+i.paye.toFixed(2);o['Statut']=i.st[0]}
+    if(c==='paie'){const i=paieInfo(r);o[T('Brut (¤)')]=i.brut;o[T('Net à payer (¤)')]=i.net}
+    return o})}
+const sheetName=c=>TITLES[c].replace(/[\\/?*[\]:]/g,'').slice(0,31);
+function exportTable(c){if(typeof XLSX==='undefined'){toast('Module Excel non chargé.');return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,sheetOf(rowsOf(c)),sheetName(c));save(`${sheetName(c).replace(/\s+/g,'_')}_${today()}.xlsx`,XLSX.write(wb,{type:'array',bookType:'xlsx'}))}
 function exportXlsx(){
   if(typeof XLSX==='undefined'){toast('Module Excel non chargé.');return}
   const wb=XLSX.utils.book_new();
   const stock=D.cuves.map(c=>{const i=cuveInfo(c);return {'Cuve':c.code,'Site':c.site,'Produit':i.p?.nom||'','Statut':c.statut,'Capacité (m³)':i.cap,'Stock (m³ à 15 °C)':+i.stock.toFixed(3),'Stock (MT)':+i.mt.toFixed(3),'Remplissage (%)':+(i.pct*100).toFixed(1),'Autonomie (jours)':i.auto===null?'':Math.floor(i.auto),[T('Valeur (¤)')]:Math.round(i.val)}});
   XLSX.utils.book_append_sheet(wb,sheetOf(stock),'Etat des stocks');
   XLSX.utils.book_append_sheet(wb,sheetOf(monthRows()),'Synthese mensuelle');
-  COLLS.forEach(c=>{const sch=SCH[c];if(!sch)return;const rows=D[c].map(r=>{const o={};if(r.numero)o['N°']=r.numero;sch.fields.forEach(f=>{let v=r[f.k];if(f.t==='ref')v=get(f.ref,v)?LAB[f.ref](get(f.ref,v)):'';if(f.t==='bool')v=v?'Oui':'Non';o[T(f.l)]=v??''});
-    if(c==='receptions')o['Tonnes (MT)']=+recInfo(r).mt.toFixed(3);if(c==='sorties')o['Tonnes (MT)']=+sorInfo(r).mt.toFixed(3);
-    if(c==='jaugeages'){o['Volume théorique (m³)']=r.volume_theorique;o['Écart (m³)']=+jauInfo(r).e.toFixed(3)}
-    if(c==='cargaisons'){const i=cgoInfo(r);o[T('Surestaries (¤)')]=Math.round(i.msur);o['Écart (MT)']=i.ecart===null?'':+i.ecart.toFixed(3)}
-    if(c==='factures'){const i=facInfo(r);o['Volume (m³)']=+i.vol.toFixed(3);o['Quantité facturée']=+i.qte.toFixed(3);o['Unité']=i.u;o[T('Total TTC (¤)')]=+i.ttc.toFixed(2);o[T('Payé (¤)')]=+i.paye.toFixed(2);o['Statut']=i.st[0]}
-    if(c==='paie'){const i=paieInfo(r);o[T('Brut (¤)')]=i.brut;o[T('Net à payer (¤)')]=i.net}
-    return o});XLSX.utils.book_append_sheet(wb,sheetOf(rows),TITLES[c].replace(/[\\/?*[\]:]/g,'').slice(0,31))});
+  COLLS.forEach(c=>{if(SCH[c])XLSX.utils.book_append_sheet(wb,sheetOf(rowsOf(c)),sheetName(c))});
   save(`Pilote_Stocks_${today()}.xlsx`,XLSX.write(wb,{type:'array',bookType:'xlsx'}));
 }
 function exportMonthly(){if(typeof XLSX==='undefined'){toast('Module Excel non chargé.');return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,sheetOf(monthRows()),'Synthese mensuelle');
@@ -1175,8 +1235,9 @@ async function genPaie(){
 /* ================================================================ évènements */
 document.addEventListener('click',e=>{
   if(!e.target.closest('#notif,#bell')&&!$('#notif').hidden)closeNotif();
-  const t=e.target.closest('[data-r],[data-add],[data-edit],[data-del],[data-close],[data-go],[data-per],[data-aper],[data-jauger],[data-pdf],[data-grp],[data-menu],[data-more],[data-bell],[data-closenotif],[data-sys]');if(!t)return;
-  if(t.dataset.r)go(t.dataset.r);
+  const t=e.target.closest('[data-quick],[data-r],[data-add],[data-edit],[data-del],[data-close],[data-go],[data-per],[data-aper],[data-jauger],[data-pdf],[data-grp],[data-menu],[data-more],[data-bell],[data-closenotif],[data-sys]');if(!t)return;
+  if(t.hasAttribute('data-quick'))openQuick();
+  else if(t.dataset.r)go(t.dataset.r);
   else if(t.dataset.go)go(t.dataset.go);
   else if(t.dataset.add)openForm(t.dataset.add,null);
   else if(t.dataset.edit)openForm(t.dataset.edit,get(t.dataset.edit,t.dataset.id));
@@ -1199,14 +1260,16 @@ function sysAction(a){
   if(a==='backup'){save(`pilote-stocks-sauvegarde-${today()}.json`,JSON.stringify(db.dump(),null,1),'application/json');toast('Sauvegarde téléchargée.')}
   else if(a==='restore')$('#restfile').click();
   else if(a==='xlmois')exportMonthly();
+  else if(a==='xltable')exportTable(SCH[S.tbl]?S.tbl:'receptions');
   else if(a==='genpaie')genPaie();
   else if(a==='demo')confirmBox('Charger les données d\'exemple ?','Les données actuelles seront <b>remplacées</b> par un jeu de données fictives. Téléchargez une sauvegarde avant si besoin.','Charger les exemples',async()=>{await db.replaceAll(demoData());toast('Données d\'exemple chargées.')});
   else if(a==='wipe')confirmBox('Vider toute la base ?',`Toutes les données seront supprimées${MODE==='serveur'?' pour tous les utilisateurs':''}. La configuration du dépôt est conservée. Cette action est définitive sans sauvegarde.`,'Tout supprimer',async()=>{const c=Object.assign({},IDX.config.get('general')||{});delete c.id;delete c.demo;await db.replaceAll({config:{general:Object.assign(c,{maj:new Date().toISOString()})}});toast('Base vidée.')});
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#modal'))closeModal();else if(!$('#notif').hidden)closeNotif();else closeSide()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('tr[data-edit]')){e.target.click();return}if(e.key==='Escape'){if($('#modal'))closeModal();else if(!$('#notif').hidden)closeNotif();else closeSide()}});
 document.addEventListener('mousedown',e=>{if(e.target.id==='modal')closeModal()});
 document.addEventListener('submit',e=>{if(e.target.id==='cfgform'){e.preventDefault();saveCfg()}});
 document.addEventListener('change',e=>{
+  if(e.target.id==='tblsel'){S.tbl=e.target.value;S.limit=100;try{localStorage.setItem('ps_tbl',S.tbl)}catch(x){}render();return}
   if(e.target.id==='lf'){S.from=e.target.value||S.from;render()}if(e.target.id==='lt'){S.to=e.target.value||S.to;render()}
   if(e.target.id==='restfile'&&e.target.files[0]){const f=e.target.files[0];const rd=new FileReader();
     rd.onload=()=>{let data;try{data=JSON.parse(rd.result)}catch(err){toast('Fichier illisible : ce n\'est pas une sauvegarde Pilote Stocks.');return}
@@ -1228,7 +1291,7 @@ themeIcon();
 $('#theme').addEventListener('click',()=>{const dark=document.documentElement.dataset.theme?document.documentElement.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
   document.documentElement.dataset.theme=dark?'light':'dark';try{localStorage.setItem('ps_theme',document.documentElement.dataset.theme)}catch(e){}themeIcon();render()});
 const mq=matchMedia('(prefers-color-scheme: dark)');mq.addEventListener&&mq.addEventListener('change',()=>{themeIcon();render()});
-try{const r=localStorage.getItem('ps_route');if(r&&TITLES[r])S.route=r;S.nobanner=sessionStorage.getItem('ps_nobanner')==='1'}catch(e){}
+try{const r=localStorage.getItem('ps_route');if(r&&TITLES[r])S.route=r;const tb=localStorage.getItem('ps_tbl');if(tb&&SCH[tb])S.tbl=tb;S.nobanner=sessionStorage.getItem('ps_nobanner')==='1'}catch(e){}
 fillSites();
 
 /* ================================================================ stockage : serveur partagé ou navigateur */
@@ -1271,6 +1334,7 @@ render();
   MODE=srv?'serveur':'local';db=srv?serverDb():localDb();canWrite=true;
   COLLS.forEach(c=>{db.collection(c).onSnapshot(s=>{D[c]=s.docs.map(x=>Object.assign({},x.data(),{id:x.id}));LOADED.add(c);lastSync=new Date();if(LOADED.size===COLLS.length)dbState='ready';schedule()})});
   schedule();
+  if(MODE==='local'&&navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
   if('serviceWorker' in navigator&&(location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname)))navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 })();
