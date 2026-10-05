@@ -1,0 +1,4 @@
+# Données saisies en mode serveur : ne jamais les publier
+data/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,1279 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pilote Stocks</title>
+<meta name="description" content="Suivi des stocks d'un dépôt pétrolier : cuves, jaugeages, cargaisons, mouvements, facturation, paie et maintenance.">
+<meta name="theme-color" content="#0B6E64">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pilote Stocks">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<style>
+/* Mise en page : barre latérale sombre (menu par domaines, groupes repliables), zone de travail claire ; sur téléphone, menu en tiroir et barre d'accès rapide en bas. */
+:root{
+  --bg:#F2F1EC; --surface:#FFFFFF; --sunk:#E9E7E0; --line:#D8D5CC; --ink:#1B1F23; --muted:#5D636A;
+  --accent:#0B6E64; --accent-2:#08594F; --accent-ink:#FFFFFF; --accent-soft:#DAEDE9;
+  --side:#14171A; --side-2:#1D2125; --side-ink:#D6DADD; --side-muted:#7E858C; --side-line:#2A2F34;
+  --ok:#1B6E35; --ok-bg:#DFF0E3; --warn:#975500; --warn-bg:#F8ECD3; --bad:#AF241C; --bad-bg:#F9DEDA; --info:#2D5986; --info-bg:#E0E9F3;
+  --in:#0B6E64; --out:#C06A00; --cif:#5C6BC0; --tube:#ECEAE4;
+  --f-d:"Archivo","Arial Narrow",Arial,sans-serif; --f-b:"Public Sans",-apple-system,"Segoe UI",Roboto,Arial,sans-serif; --f-m:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111315; --surface:#191C1F; --sunk:#202428; --line:#30363B; --ink:#E6E8EA; --muted:#A1A8AF;
+  --accent:#3FB2A4; --accent-2:#5CC4B7; --accent-ink:#06201C; --accent-soft:#153A35;
+  --side:#0B0D0F; --side-2:#15181B; --side-ink:#D6DADD; --side-muted:#7E858C; --side-line:#23282C;
+  --ok:#62C98A; --ok-bg:#16301F; --warn:#F0AA4C; --warn-bg:#3A2A12; --bad:#F3796D; --bad-bg:#3C1B18; --info:#86B3E2; --info-bg:#182A3D;
+  --in:#3FB2A4; --out:#F0AA4C; --cif:#9FA8DA; --tube:#25292D; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111315; --surface:#191C1F; --sunk:#202428; --line:#30363B; --ink:#E6E8EA; --muted:#A1A8AF;
+  --accent:#3FB2A4; --accent-2:#5CC4B7; --accent-ink:#06201C; --accent-soft:#153A35;
+  --side:#0B0D0F; --side-2:#15181B; --side-ink:#D6DADD; --side-muted:#7E858C; --side-line:#23282C;
+  --ok:#62C98A; --ok-bg:#16301F; --warn:#F0AA4C; --warn-bg:#3A2A12; --bad:#F3796D; --bad-bg:#3C1B18; --info:#86B3E2; --info-bg:#182A3D;
+  --in:#3FB2A4; --out:#F0AA4C; --cif:#9FA8DA; --tube:#25292D; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-b);font-size:14px;line-height:1.45;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--f-m);font-variant-numeric:tabular-nums}
+.num{font-family:var(--f-m);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+/* ---- coque ---- */
+#side{position:fixed;inset:0 auto 0 0;width:256px;background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;z-index:40;padding-top:env(safe-area-inset-top,0px);transition:transform .2s}
+.brand{display:flex;align-items:center;gap:10px;padding:18px 16px 14px;border-bottom:1px solid var(--side-line)}
+.brand-mark{width:36px;height:36px;border-radius:8px;background:var(--accent);display:grid;place-items:center;flex:none}
+.brand b{font-family:var(--f-d);font-size:17px;font-weight:800;letter-spacing:.02em;display:block;color:#fff}
+.brand small{display:block;font-family:var(--f-m);font-size:10.5px;color:var(--side-muted);letter-spacing:.02em;line-height:1.3;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav#menu{flex:1;overflow-y:auto;padding:8px 10px 16px;overscroll-behavior:contain}
+.grp{margin-top:6px}
+.grp-t{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:none;cursor:pointer;font-family:var(--f-m);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--side-muted);padding:8px 10px;border-radius:6px;text-align:left}
+.grp-t:hover{color:var(--side-ink)}
+.grp-t svg{width:14px;height:14px;transition:transform .15s}
+.grp.closed .grp-t svg{transform:rotate(-90deg)}
+.grp.closed .mi{display:none}
+.mi{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;color:var(--side-ink);padding:8px 10px;border-radius:6px;cursor:pointer;text-align:left;font-size:13.5px}
+.mi svg{width:17px;height:17px;flex:none;opacity:.75}
+.mi:hover{background:var(--side-2)}
+.mi:focus-visible,.grp-t:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mi.on{background:var(--accent);color:var(--accent-ink)}
+.mi.on svg{opacity:1}
+.mi .cnt{margin-left:auto;font-family:var(--f-m);font-size:11px;background:var(--bad);color:#fff;border-radius:999px;padding:0 6px}
+.side-foot{padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--side-line);font-family:var(--f-m);font-size:10.5px;color:var(--side-muted)}
+#main{margin-left:256px;min-height:100%;display:flex;flex-direction:column}
+#top{position:sticky;top:0;z-index:30;background:var(--bg);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 24px 10px;flex-wrap:wrap}
+#burger{display:none}
+.crumb{min-width:0;flex:1}
+.crumb small{display:block;font-family:var(--f-m);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crumb b{font-family:var(--f-d);font-weight:700;font-size:16px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tools{display:flex;align-items:center;gap:8px}
+.tbtns{display:flex;align-items:center;gap:6px;position:relative}
+.sync{font-family:var(--f-m);font-size:11px;color:var(--muted);text-align:right;line-height:1.3;white-space:nowrap}
+.sync i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:5px;vertical-align:1px}
+.sync i.off{background:var(--warn)}
+#view{padding:20px 24px 48px;display:flex;flex-direction:column;gap:18px;max-width:1500px;width:100%}
+#banner:empty{display:none}
+#banner{margin:14px 24px 0;padding:10px 14px;border-radius:8px;background:var(--info-bg);color:var(--info);font-size:13px;border:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:1452px}
+#banner .btn{padding:4px 10px;font-size:12px}
+/* ---- commandes ---- */
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:7px 12px;cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.ib:focus-visible,.sq:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.pri:hover{background:var(--accent-2)}
+.btn.dan{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn svg{width:15px;height:15px}
+.sq{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:7px;width:36px;height:36px;display:inline-grid;place-items:center;cursor:pointer;color:var(--ink);flex:none}
+.sq:hover{border-color:var(--accent)}
+.sq svg{width:18px;height:18px}
+.sq[disabled]{opacity:.5;cursor:not-allowed}
+.badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font-family:var(--f-m);font-size:10.5px;font-weight:600;display:grid;place-items:center;border:2px solid var(--bg)}
+.badge:empty{display:none}
+.ib{border:1px solid transparent;background:none;border-radius:6px;padding:5px;cursor:pointer;color:var(--muted);display:inline-grid;place-items:center}
+.ib:hover{background:var(--sunk);color:var(--ink)}
+.ib svg{width:16px;height:16px}
+.ib.pdf{color:var(--info);font-family:var(--f-m);font-size:11px;font-weight:600;gap:3px;display:inline-flex;align-items:center}
+.inp,select.inp{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:7px 10px;min-width:0;height:36px}
+textarea.inp{height:auto}
+.search{position:relative}
+.search input{padding-left:32px;width:240px;max-width:100%}
+.search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted)}
+/* ---- notifications ---- */
+#notif{position:absolute;right:0;top:44px;width:min(380px,calc(100vw - 24px));max-height:70vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.22);z-index:45;padding:10px}
+#notif h4{margin:2px 4px 8px;font-family:var(--f-d);font-size:14px;display:flex;justify-content:space-between;align-items:center}
+/* ---- titres ---- */
+.vh{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.vh h1{font-family:var(--f-d);font-size:24px;font-weight:700;margin:0;text-wrap:balance}
+.vh p{margin:4px 0 0;color:var(--muted);max-width:75ch}
+.vh .acts{display:flex;gap:8px;flex-wrap:wrap}
+h2.sec{font-family:var(--f-d);font-size:15px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
+.lbl{font-family:var(--f-m);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+/* ---- indicateurs ---- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+@media (min-width:1100px){.kpis.k4{grid-template-columns:repeat(4,minmax(0,1fr))}.kpis.k3{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0;position:relative}
+.kpi .v{font-family:var(--f-d);font-size:23px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15;overflow-wrap:anywhere}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.kpi .ki{position:absolute;right:12px;top:12px;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--sunk);color:var(--muted)}
+.kpi .ki svg{width:16px;height:16px}
+.kpi .ki~.lbl,.kpi .ki~.v{padding-right:34px}
+.kpi.bad .v{color:var(--bad)} .kpi.ok .v{color:var(--ok)} .kpi.acc .v{color:var(--accent)} .kpi.warn .v{color:var(--warn)}
+.kpi.acc .ki{background:var(--accent-soft);color:var(--accent)}
+/* ---- panneaux et tableaux ---- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
+.grid2.eq{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:1100px){.grid2,.grid2.eq{grid-template-columns:minmax(0,1fr)}}
+.tw{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:12.8px}
+th{font-family:var(--f-m);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:9px 9px;border-bottom:1px solid var(--line);background:var(--sunk);white-space:nowrap}
+th.num{text-align:right}
+td{padding:9px 9px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb,var(--sunk) 55%,transparent)}
+tfoot td{font-weight:700;background:var(--sunk);border-top:1px solid var(--line)}
+td.act{white-space:nowrap;text-align:right}
+.code{font-family:var(--f-m);font-weight:600;font-size:12.5px;white-space:nowrap}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}
+.sub{display:block;font-size:11.5px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+.chip.ok{background:var(--ok-bg);color:var(--ok)} .chip.warn{background:var(--warn-bg);color:var(--warn)} .chip.bad{background:var(--bad-bg);color:var(--bad)} .chip.info{background:var(--info-bg);color:var(--info)} .chip.mut{background:var(--sunk);color:var(--muted)}
+.empty{padding:34px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-family:var(--f-d);font-size:16px;margin-bottom:4px}
+.more{display:flex;justify-content:center;padding:12px;border-top:1px solid var(--line)}
+.bar{height:8px;border-radius:99px;background:var(--tube);overflow:hidden;min-width:60px}
+.bar>i{display:block;height:100%;border-radius:99px}
+.rank{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.rank:last-child{border-bottom:0}
+.rank .bar{grid-column:2/4;height:6px}
+.rank .n{font-family:var(--f-m);color:var(--muted);font-size:12px}
+/* ---- cuves ---- */
+.tanks{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.tank{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.tank-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.tank-h .lbl{display:block}
+.tank-h h3{margin:2px 0 0;font-family:var(--f-d);font-size:18px;font-weight:700}
+.tank-b{display:grid;grid-template-columns:112px minmax(0,1fr);gap:14px}
+.tube{position:relative;height:208px;border:2px solid var(--line);border-radius:14px 14px 10px 10px;background:var(--tube);overflow:hidden}
+.tube .fill{position:absolute;left:0;right:0;bottom:0;transition:height .4s}
+.tube .tick{position:absolute;left:0;right:0;border-top:1px dashed color-mix(in srgb,var(--muted) 45%,transparent);font-family:var(--f-m);font-size:9.5px;color:var(--muted);padding-left:5px;z-index:1}
+.tube .pct{position:absolute;left:0;right:0;text-align:center;font-family:var(--f-d);font-weight:800;font-size:19px;z-index:2;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.55)}
+.tube .pct.lo{color:var(--ink);text-shadow:none}
+.stats{display:flex;flex-direction:column;gap:8px}
+.stat{background:var(--sunk);border-radius:8px;padding:7px 10px}
+.stat b{display:block;font-family:var(--f-m);font-size:15px;font-weight:600}
+.tank-f{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:10px;flex-wrap:wrap}
+/* ---- alertes, graphiques ---- */
+.alerts{display:flex;flex-direction:column;gap:8px}
+.al{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:8px;font-size:13px;border:1px solid var(--line);cursor:pointer;background:var(--surface);text-align:left;width:100%}
+.al:hover{border-color:var(--accent)}
+.al .k{width:4px;align-self:stretch;border-radius:4px;flex:none}
+.al.bad .k{background:var(--bad)} .al.warn .k{background:var(--warn)} .al.info .k{background:var(--info)}
+.al small{display:block;color:var(--muted);font-family:var(--f-m);font-size:11px}
+.chartbox{position:relative;height:290px}
+.chartbox.sm{height:250px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:5px 10px;cursor:pointer;font-size:12.5px}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.mv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.mv:last-child{border-bottom:0}
+.lvl{display:grid;grid-template-columns:70px minmax(0,1fr) 46px;gap:10px;align-items:center;font-size:12.5px}
+/* ---- fenêtre de saisie ---- */
+#modal{position:fixed;inset:0;z-index:60;background:rgba(10,12,14,.55);display:flex;align-items:flex-start;justify-content:center;padding:calc(24px + env(safe-area-inset-top,0px)) 12px 30px;overflow-y:auto}
+.dlg{background:var(--surface);border-radius:12px;width:100%;max-width:660px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.dlg-h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.dlg-h h3{margin:0;font-family:var(--f-d);font-size:17px}
+.dlg-b{padding:16px 18px;display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+@media (max-width:560px){.dlg-b{grid-template-columns:1fr}}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld.w{grid-column:1/-1}
+.fld label{font-family:var(--f-m);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.fld label i{color:var(--bad);font-style:normal}
+.fld .inp{width:100%}
+.fld textarea.inp{min-height:64px;resize:vertical}
+.fld .h{font-size:11.5px;color:var(--muted)}
+.fld.chk{flex-direction:row;align-items:center;gap:8px}
+.fld.chk label{text-transform:none;letter-spacing:0;font-family:var(--f-b);font-size:13px;color:var(--ink)}
+.live{grid-column:1/-1;background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:13px}
+.live:empty{display:none}
+.err{grid-column:1/-1;background:var(--bad-bg);color:var(--bad);border-radius:8px;padding:9px 12px;font-size:13px}
+.err:empty{display:none}
+.dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--line)}
+.cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 14px}
+#toast{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:70;display:flex;flex-direction:column;gap:8px}
+.tst{background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:8px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#scrim{display:none}
+#bnav{display:none}
+/* ---- téléphone et tablette ---- */
+@media (max-width:900px){
+  #side{transform:translateX(-100%);width:280px} #side.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.4)}
+  #scrim.on{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:35}
+  #main{margin-left:0;padding-bottom:calc(62px + env(safe-area-inset-bottom,0px))} #burger{display:inline-grid}
+  #top{padding-left:12px;padding-right:12px;gap:8px}
+  .tools{order:9;flex-basis:100%}
+  .tools .search{flex:1}.tools .search input{width:100%}
+  .tools select{max-width:46%}
+  .sync{display:none}
+  #view{padding:16px 12px 32px;gap:14px} #banner{margin:12px 12px 0}
+  .vh h1{font-size:21px}
+  .tank-b{grid-template-columns:92px minmax(0,1fr)}
+  .tube{height:180px}
+  #toast{right:12px;left:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+  #bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}
+  #bnav button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;font-size:10.5px;color:var(--muted);cursor:pointer;border-radius:8px}
+  #bnav button svg{width:20px;height:20px}
+  #bnav button.on{color:var(--accent);font-weight:600}
+}
+@media (max-width:640px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .kpi{padding:12px}.kpi .v{font-size:18px}.kpi .ki{display:none}.kpi .s{font-size:11.5px}.kpi .lbl{letter-spacing:.03em}
+  #banner{font-size:12px;padding:8px 10px}
+  .rt thead{display:none}
+  .rt,.rt tbody,.rt tr,.rt td{display:block;width:100%}
+  .rt tr{padding:10px 12px;border-bottom:1px solid var(--line)}
+  .rt tbody tr:last-child{border-bottom:0}
+  .rt td{border:0;padding:3px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;text-align:right}
+  .rt td::before{content:attr(data-l);font-family:var(--f-m);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding-top:2px;flex:none;max-width:45%}
+  .rt td.act{justify-content:flex-end;padding-top:6px}
+  .rt td.act::before{content:none}
+  .rt tbody tr:hover td{background:none}
+  .vh .acts{width:100%}.vh .acts .btn{flex:1;justify-content:center}
+  .tanks{grid-template-columns:minmax(0,1fr)}
+  .chartbox{height:240px}
+  .dlg-f .btn{flex:1;justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media print{#side,#top,#bnav,#banner,.acts,td.act{display:none!important}#main{margin:0}}
+</style>
+</head>
+<body>
+
+<aside id="side" aria-label="Menu principal">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2"><path d="M5 21V8a7 3 0 0 1 14 0v13"/><path d="M5 8a7 3 0 0 0 14 0"/><path d="M5 14a7 3 0 0 0 14 0"/></svg></div>
+    <div style="min-width:0"><b>PILOTE STOCKS</b><small id="brand-sub">Dépôt pétrolier</small></div>
+  </div>
+  <nav id="menu"></nav>
+  <div class="side-foot" id="foot">Version 0.3</div>
+</aside>
+<div id="scrim"></div>
+<div id="main">
+  <header id="top">
+    <button id="burger" class="sq" aria-label="Ouvrir le menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <div class="crumb"><small id="crumb-g">Pilotage</small><b id="crumb-t">Tableau de bord</b></div>
+    <div class="tools">
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="q" class="inp" type="search" placeholder="Rechercher" aria-label="Rechercher"></div>
+      <select id="site" class="inp" aria-label="Filtrer par site"><option value="all">Tous les sites</option></select>
+    </div>
+    <div class="tbtns">
+      <button id="exp" class="sq" title="Exporter toutes les données vers Excel" aria-label="Exporter vers Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h11l5 5v13H4z"/><path d="M14 3v6h6M8 13l4 5M12 13l-4 5"/></svg></button>
+      <button id="theme" class="sq" title="Thème clair ou sombre" aria-label="Changer de thème"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      <button id="bell" class="sq" title="Alertes" aria-label="Alertes" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="badge" id="bell-n"></span></button>
+      <div id="notif" hidden></div>
+    </div>
+    <div class="sync" id="sync"><i class="off"></i>Connexion…</div>
+  </header>
+  <div id="banner"></div>
+  <main id="view"></main>
+</div>
+<nav id="bnav" aria-label="Accès rapide"></nav>
+<div id="modal-root"></div>
+<div id="toast" aria-live="polite"></div>
+
+<script src="assets/vendor/chart.umd.js"></script>
+<script src="assets/vendor/xlsx.full.min.js"></script>
+<script src="assets/vendor/jspdf.umd.min.js"></script>
+<script src="assets/exemple-donnees.js"></script>
+<script>
+(function(){
+'use strict';
+/* ================================================================ état */
+const VERSION='0.3';
+const COLLS=['produits','cuves','clients','fournisseurs','commandes','cargaisons','receptions','sorties','jaugeages','camions','chauffeurs','employes','paie','factures','paiements','depenses','maintenance','config'];
+const D={}; COLLS.forEach(c=>D[c]=[]);
+const IDX={}; COLLS.forEach(c=>IDX[c]=new Map());
+const LOADED=new Set();
+let db=null, canWrite=true, dbState='loading', lastSync=null;
+const CFG_DEF={nom:'Dépôt pétrolier',adresse:'',contact:'',devise:'USD',tva:0,retenue:8,tolerance:0.5,hse_mois:12,rupture_jours:10,site1:'Terminal portuaire – cuves louées',site2:'Dépôt de bitume',site3:''};
+let CFG=Object.assign({},CFG_DEF), TOL=0.005, HSE_MOIS=12;
+const SITES=[CFG_DEF.site1,CFG_DEF.site2];
+const S={route:'dashboard',q:'',site:'all',period:30,aper:30,from:null,to:null,limit:100};
+const CH={};
+let MEMO=new Map();
+
+/* ================================================================ outils */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0};
+const fmt=(n,d=0)=>(n===null||n===undefined||n===''||!isFinite(n))?'–':Number(n).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const SYM={USD:'$',EUR:'€',DJF:'FDJ',XOF:'FCFA',XAF:'FCFA',MAD:'DH',GBP:'£'};
+const sym=()=>SYM[CFG.devise]||CFG.devise||'';
+const cur=(n,d=0)=>fmt(n,d)+' '+sym();
+const T=s=>String(s).replace(/¤/g,CFG.devise||'');
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>iso(new Date());
+const thisMonth=()=>today().slice(0,7);
+const nowDT=()=>{const d=new Date();return iso(d)+'T'+pad(d.getHours())+':'+pad(d.getMinutes())};
+const addDays=(s,n)=>{if(!s)return '';const d=new Date(s.slice(0,10)+'T12:00:00');d.setDate(d.getDate()+n);return iso(d)};
+const addMonths=(s,n)=>{if(!s)return '';const d=new Date(s.slice(0,10)+'T12:00:00');d.setMonth(d.getMonth()+n);return iso(d)};
+const daysBetween=(a,b)=>Math.round((new Date(b.slice(0,10)+'T12:00:00')-new Date(a.slice(0,10)+'T12:00:00'))/864e5);
+const MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const MCOURT=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const fm=p=>p?MOIS[+p.slice(5,7)-1]+' '+p.slice(0,4):'–';
+const fd=s=>s?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):'–';
+const fdt=s=>s?fd(s)+(s.length>10?' '+s.slice(11,16):''):'–';
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const strip=h=>String(h).replace(/<[^>]*>/g,' ');
+const get=(c,id)=>id?IDX[c].get(id):undefined;
+const mtOf=(v,d)=>num(v)*num(d)/1000;
+const chip=(t,k)=>`<span class="chip ${k}">${esc(t)}</span>`;
+const dot=c=>`<span class="dot" style="background:${esc(c||'#888')}"></span>`;
+const memo=(k,f)=>{if(MEMO.has(k))return MEMO.get(k);const v=f();MEMO.set(k,v);return v};
+const une=w=>/^(réception|sortie|facture|commande|cargaison|cuve|dépense|intervention|fiche|ligne)/.test(w);
+function toast(t){const el=document.createElement('div');el.className='tst';el.textContent=t;$('#toast').appendChild(el);setTimeout(()=>el.remove(),3400)}
+function rid(){return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function keyId(s){return String(s||'').trim().replace(/[^A-Za-z0-9_\-.~:@+]/g,'-').replace(/^\.+$/,'-').slice(0,120)}
+function reindex(){COLLS.forEach(c=>{const m=new Map();D[c].forEach(r=>m.set(r.id,r));IDX[c]=m});MEMO=new Map();applyCfg()}
+
+const I={ /* icônes */
+ dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
+ chart:'<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>',
+ book:'<path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4z"/><path d="M8 8h8M8 12h6"/>',
+ loss:'<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.01"/>',
+ tank:'<path d="M5 21V8a7 3 0 0 1 14 0v13"/><path d="M5 8a7 3 0 0 0 14 0"/>',
+ gauge:'<path d="M12 3v18M8 7h4M8 11h4M8 15h4M8 19h4"/><path d="M16 5v14"/>',
+ order:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+ ship:'<path d="M3 17h18l-2 4H5z"/><path d="M5 17V9h14v8M9 9V5h6v4"/>',
+ in:'<path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v4h16v-4"/>',
+ out:'<path d="M12 15V3m0 0-4 4m4-4 4 4"/><path d="M4 17v4h16v-4"/>',
+ truck:'<path d="M2 6h11v10H2zM13 10h5l3 3v3h-8"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+ users:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M22 20a7 7 0 0 0-4-6.3"/>',
+ id:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17a3.5 3.5 0 0 1 7 0M15 9h3M15 13h3"/>',
+ box:'<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>',
+ drop:'<path d="M12 3s7 7.5 7 12a7 7 0 0 1-14 0c0-4.5 7-12 7-12z"/>',
+ inv:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+ pay:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+ wallet:'<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-4v4M17 13h.01"/>',
+ cost:'<path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+ tool:'<path d="M14 7a4 4 0 0 0 5 5l-9 9-3-3 9-9a4 4 0 0 0-2-2z"/>',
+ cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>', edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>', del:'<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/>',
+ x:'<path d="M6 6l12 12M18 6 6 18"/>', chev:'<path d="m6 9 6 6 6-6"/>', menu:'<path d="M4 6h16M4 12h16M4 18h16"/>', bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+ dl:'<path d="M12 3v12m0 0-4-4m4 4 4-4M4 21h16"/>', sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+ moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
+};
+const ic=(k,w)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${w?` width="${w}" height="${w}"`:''}>${I[k]}</svg>`;
+
+/* ================================================================ configuration */
+function applyCfg(){
+  const c=IDX.config.get('general')||{};
+  CFG=Object.assign({},CFG_DEF,c);
+  TOL=num(CFG.tolerance)/100; HSE_MOIS=num(CFG.hse_mois)||12;
+  const s=[CFG.site1,CFG.site2,CFG.site3].map(x=>String(x||'').trim()).filter(Boolean);
+  D.cuves.forEach(cu=>{if(cu.site&&!s.includes(cu.site))s.push(cu.site)});
+  if(s.join('|')!==SITES.join('|')){SITES.splice(0,SITES.length,...s);fillSites()}
+  $('#brand-sub').textContent=CFG.nom||'Dépôt pétrolier';
+}
+function fillSites(){const el=$('#site');if(!el)return;if(S.site!=='all'&&!SITES.includes(S.site))S.site='all';
+  el.innerHTML=`<option value="all">Tous les sites</option>`+SITES.map(s=>`<option${s===S.site?' selected':''}>${esc(s)}</option>`).join('')}
+
+/* ================================================================ calculs métier */
+const prodOfCuve=cu=>get('produits',cu?.produit);
+const densP=p=>num(p?.densite)||1000;
+const siteOk=cu=>S.site==='all'||cu?.site===S.site;
+const isTruck=t=>t==='Chargement camion'||t==='Remplissage fûts';
+const isInterne=t=>t==='Consommation interne'||t==='Transfert interne';
+function cuveStock(cid,until,excl){
+  const cu=get('cuves',cid); if(!cu) return 0; let s=0;
+  if(!until||!cu.date_initial||cu.date_initial<=until) s+=num(cu.stock_initial);
+  for(const r of D.receptions) if(r.cuve===cid&&(!until||(r.date||'')<=until)) s+=num(r.volume);
+  for(const o of D.sorties) if(o.cuve===cid&&o.type!=='Livraison CIF'&&(!until||(o.date||'')<=until)) s-=num(o.volume);
+  for(const j of D.jaugeages) if(j.cuve===cid&&j.valide&&j.id!==excl&&(!until||(j.date||'').slice(0,10)<=until)) s+=num(j.volume_mesure)-num(j.volume_theorique);
+  return s;
+}
+function cuveInfo(cu){return memo('cu:'+cu.id,()=>{
+  const p=prodOfCuve(cu), stock=cuveStock(cu.id), cap=num(cu.capacite);
+  const pct=cap?Math.max(0,stock)/cap:0, mt=mtOf(stock,densP(p));
+  const jj=D.jaugeages.filter(j=>j.cuve===cu.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const last=jj[0]; const seuil=(num(p?.seuil)||20)/100;
+  const maint=D.maintenance.some(m=>m.cuve===cu.id&&m.statut==='En cours');
+  const since=addDays(today(),-30);
+  const out30=D.sorties.filter(o=>o.cuve===cu.id&&o.type!=='Livraison CIF'&&o.type!=='Transfert interne'&&(o.date||'')>since).reduce((a,o)=>a+num(o.volume),0);
+  const jour=out30/30, auto=jour>0?Math.max(0,stock)/jour:null;
+  let etat='ok',txt='Niveau correct';
+  if(cu.statut&&cu.statut!=='Active'){etat='mut';txt=cu.statut}
+  else if(maint){etat='info';txt='Intervention en cours'}
+  else if(stock<-0.5){etat='bad';txt='Stock négatif : vérifier les saisies'}
+  else if(pct<seuil){etat='bad';txt='Sous le seuil de sécurité'}
+  else if(pct>0.95){etat='warn';txt='Presque pleine'}
+  else if(auto!==null&&auto<num(CFG.rupture_jours)){etat='warn';txt='Rupture prévue sous '+fmt(Math.ceil(auto))+' j'}
+  return {p,stock,cap,pct,mt,libre:Math.max(0,cap-stock),last,etat,txt,val:mt*num(p?.prix_ref),out30,jour,auto};
+})}
+function recInfo(r){const cu=get('cuves',r.cuve),p=prodOfCuve(cu);return {cu,p,mt:mtOf(r.volume,num(r.densite)||densP(p))}}
+function sorInfo(o){return memo('so:'+o.id,()=>{
+  const cu=get('cuves',o.cuve); const g=get('cargaisons',o.cargaison);
+  const p=o.type==='Livraison CIF'?get('produits',o.produit)||get('produits',get('commandes',g?.commande)?.produit):prodOfCuve(cu);
+  return {cu,g,p,mt:mtOf(o.volume,num(o.densite)||densP(p)),site:o.type==='Livraison CIF'?SITES[0]:cu?.site};
+})}
+function cgoInfo(g){
+  const cmd=get('commandes',g.commande), p=get('produits',cmd?.produit);
+  let duree=null,hsur=null,msur=0;
+  if(g.nor&&g.fin){duree=(new Date(g.fin)-new Date(g.nor))/36e5;hsur=Math.max(0,duree-num(g.planche));msur=hsur/24*num(g.taux)}
+  const bl=num(g.bl_mt),t=num(g.terre_mt);const ecart=t&&bl?bl-t:null;const ecp=ecart!==null?ecart/bl:null;
+  return {cmd,p,duree,hsur,msur,ecart,ecp,alerte:ecp!==null&&Math.abs(ecp)>TOL,val:ecart!==null?ecart*num(cmd?.prix):0};
+}
+function cmdInfo(c){
+  const recu=D.cargaisons.filter(g=>g.commande===c.id).reduce((a,g)=>a+num(g.bl_mt),0);
+  const paye=D.paiements.filter(p=>p.sens==='Décaissement'&&p.commande===c.id).reduce((a,p)=>a+num(p.montant),0);
+  const q=num(c.quantite),montant=q*num(c.prix);
+  const statut=recu===0?(c.fen1&&c.fen1>today()?['Navire attendu','info']:['En attente','mut']):Math.abs(recu-q)<=q*0.05?['Livrée','ok']:['Écart de quantité','warn'];
+  return {recu,paye,montant,statut};
+}
+const UNITES=['MT','m³','Litre','Fût'];
+function qtyU(o,u){const s=sorInfo(o);return u==='m³'?num(o.volume):u==='Litre'?num(o.volume)*1000:u==='Fût'?num(o.nb_futs):s.mt}
+function facCalc(f){
+  const lignes=D.sorties.filter(o=>o.facture===f.id);const p=get('produits',f.produit);const u=p?.unite||'MT';
+  const qte=lignes.reduce((a,o)=>a+qtyU(o,u),0), vol=lignes.reduce((a,o)=>a+num(o.volume),0), mt=lignes.reduce((a,o)=>a+sorInfo(o).mt,0);
+  const brut=qte*num(f.prix), rem=brut*num(f.remise)/100, ht=brut-rem, tva=ht*num(f.tva)/100, ttc=ht+tva;
+  const paye=D.paiements.filter(x=>x.sens==='Encaissement'&&x.facture===f.id).reduce((a,x)=>a+num(x.montant),0);
+  const cl=get('clients',f.client); const ech=addDays(f.date,num(cl?.delai)||30); const solde=ttc-paye;
+  let st=['À échoir','info'];
+  if(!lignes.length) st=['Sans livraison','mut']; else if(solde<=0.5) st=['Payée','ok']; else if(today()>ech) st=['Échue','bad']; else if(paye>0) st=['Partiellement payée','warn'];
+  return {lignes,u,qte,vol,mt,brut,rem,ht,tva,ttc,paye,solde,ech,cl,st};
+}
+function facInfo(f){return f&&get('factures',f.id)===f?memo('fa:'+f.id,()=>facCalc(f)):facCalc(f)}
+function jauInfo(j){const cu=get('cuves',j.cuve),p=prodOfCuve(cu);const e=num(j.volume_mesure)-num(j.volume_theorique);const ep=num(j.volume_theorique)?e/num(j.volume_theorique):0;return {cu,p,e,ep,emt:mtOf(e,densP(p)),val:mtOf(e,densP(p))*num(p?.prix_ref),hors:Math.abs(ep)>TOL}}
+function chfInfo(c){
+  const t=today();const permis=c.permis_validite&&c.permis_validite>=t;const hse=c.hse_date&&addMonths(c.hse_date,HSE_MOIS)>=t;
+  return {rot:D.sorties.filter(o=>o.chauffeur===c.id).length,permis,hse,ok:permis&&hse,hseFin:c.hse_date?addMonths(c.hse_date,HSE_MOIS):''};
+}
+function camInfo(c){const cert=c.cert_validite&&c.cert_validite>=today();return {rot:D.sorties.filter(o=>o.camion===c.id).length,cert,ok:c.statut!=='Suspendu'&&cert}}
+function cliInfo(c){return memo('cl:'+c.id,()=>{
+  const vol=D.sorties.filter(o=>o.client===c.id).reduce((a,o)=>a+sorInfo(o).mt,0);
+  let ca=0,solde=0;D.factures.filter(f=>f.client===c.id).forEach(f=>{const i=facInfo(f);ca+=i.ttc;solde+=i.solde});
+  return {vol,ca,solde};
+})}
+function paieInfo(r){const brut=num(r.base)+num(r.primes)+num(r.heures_sup);const ret=num(r.deductions)+num(r.avance);return {brut,ret,net:brut-ret,e:get('employes',r.employe)}}
+function alerts(){return memo('alerts',()=>{
+  const A=[];
+  D.cuves.filter(siteOk).forEach(cu=>{const i=cuveInfo(cu);if(i.etat==='bad')A.push(['bad',`Cuve ${cu.code} : ${i.txt.toLowerCase()} (${fmt(i.pct*100,0)} %)`,'cuves']);
+    else if(i.etat==='warn'&&i.pct>0.95)A.push(['warn',`Cuve ${cu.code} presque pleine (${fmt(i.pct*100,0)} %)`,'cuves']);
+    else if(i.etat==='warn')A.push(['warn',`Cuve ${cu.code} : rupture prévue dans ${fmt(Math.ceil(i.auto))} jours au rythme des 30 derniers jours`,'analyse'])});
+  D.cargaisons.forEach(g=>{const i=cgoInfo(g);if(i.alerte)A.push(['bad',`Cargaison ${g.numero} : écart de transport ${fmt(i.ecp*100,2)} %`,'cargaisons']);if(g.qualite&&g.qualite!=='Conforme')A.push(['warn',`Cargaison ${g.numero} : contrôle qualité ${g.qualite.toLowerCase()}`,'cargaisons'])});
+  D.jaugeages.forEach(j=>{const i=jauInfo(j);if(i.hors&&!j.cause)A.push(['warn',`Jaugeage de ${i.cu?.code||'?'} du ${fd(j.date)} hors tolérance : cause à renseigner`,'pertes'])});
+  D.factures.forEach(f=>{const i=facInfo(f);if(i.st[0]==='Échue')A.push(['bad',`Facture ${f.numero} échue depuis le ${fd(i.ech)} : ${cur(i.solde)}`,'factures'])});
+  const m0=thisMonth()+'-01';const nf=D.sorties.filter(o=>!o.facture&&!isInterne(o.type)&&(o.date||'')<m0).length;if(nf)A.push(['warn',`${nf} sortie(s) des mois précédents non facturée(s)`,'sorties']);
+  D.camions.forEach(c=>{const i=camInfo(c);if(!i.cert&&c.statut!=='Suspendu')A.push(['warn',`Camion ${c.immat} : certificat expiré`,'camions'])});
+  D.chauffeurs.forEach(c=>{const i=chfInfo(c);if(!i.ok)A.push(['warn',`Chauffeur ${c.nom} : ${!i.permis?'permis expiré':'formation HSE à renouveler'}`,'chauffeurs'])});
+  D.maintenance.forEach(m=>{if(m.statut==='Planifiée'&&m.echeance&&m.echeance<=addDays(today(),15))A.push([m.echeance<today()?'bad':'warn',`Maintenance ${m.numero} ${m.echeance<today()?'en retard depuis le':'prévue le'} ${fd(m.echeance)} : ${m.description||m.type}`,'maintenance'])});
+  return A;
+})}
+
+/* ================================================================ schémas (formulaires) */
+const F=(k,l,t,o={})=>Object.assign({k,l,t},o);
+const LAB={
+  produits:r=>`${r.code} · ${r.nom}`, cuves:r=>`${r.code} · ${prodOfCuve(r)?.nom||''}`, clients:r=>r.nom, fournisseurs:r=>r.nom,
+  commandes:r=>`${r.numero} · ${get('produits',r.produit)?.code||''} · ${fmt(r.quantite)} MT`, cargaisons:r=>`${r.numero} · ${r.navire||''}`,
+  camions:r=>`${r.immat} · ${r.type||''}`, chauffeurs:r=>r.nom, factures:r=>`${r.numero} · ${get('clients',r.client)?.nom||''}`, employes:r=>`${r.matricule} · ${r.nom}`
+};
+const isCIF=v=>v.type==='Livraison CIF';
+const SERVICES=['Direction','Exploitation','Technique et maintenance','HSE','Commercial','Finance et comptabilité','Logistique','Administration'];
+const CAUSES=['','Évaporation','Dilatation thermique','Fuite','Erreur de mesure / calibrage','Soutirage non déclaré','Autre'];
+const SCH={
+ produits:{one:'produit',key:'code',fields:[F('code','Code','text',{req:1,ph:'AGO',lock:1}),F('nom','Nom','text',{req:1}),F('categorie','Catégorie','sel',{opts:['Carburant','Bitume','Lubrifiant','Autre'],req:1}),F('unite','Unité de facturation','sel',{opts:UNITES,def:'MT',h:'Quantité facturée : tonnes, m³ à 15 °C, litres ou fûts.'}),F('couleur','Couleur des jauges','color',{def:'#C98A1B'}),F('densite','Densité à 15 °C (kg/m³)','num',{req:1}),F('prix_ref','Prix de référence (¤/MT)','num',{h:'Sert à valoriser le stock et les écarts.'}),F('seuil','Seuil d\'alerte (% de la cuve)','num',{def:20})]},
+ cuves:{one:'cuve',key:'code',fields:[F('code','N° de cuve','text',{req:1,ph:'BT-01',lock:1}),F('site','Site','sel',{opts:SITES,req:1}),F('produit','Produit stocké','ref',{ref:'produits',req:1}),F('statut','Statut','sel',{opts:['Active','En maintenance','En construction','Hors service'],def:'Active'}),F('capacite','Capacité (m³)','num',{req:1}),F('hauteur_max','Hauteur max de remplissage (mm)','num',{h:'Pour estimer un volume à partir d\'une hauteur jaugée.'}),F('stock_initial','Stock initial (m³ à 15 °C)','num',{def:0}),F('date_initial','Date du stock initial','date',{def:today}),F('loyer','Loyer mensuel si la cuve est louée (¤)','num')]},
+ clients:{one:'client',key:'code',fields:[F('code','Code','text',{req:1,lock:1,ph:'STA-01'}),F('nom','Raison sociale','text',{req:1}),F('type','Type','sel',{opts:['Station-service','Distributeur','Électricité','Aviation','Soutage','Travaux routiers','Industrie','Autre']}),F('delai','Délai de paiement (jours)','num',{def:30}),F('remise','Remise habituelle (%)','num',{def:0,h:'Proposée par défaut sur ses factures.'}),F('telephone','Téléphone','text'),F('contact','Contact','text'),F('adresse','Adresse','text',{w:1})]},
+ fournisseurs:{one:'fournisseur',key:'code',fields:[F('code','Code','text',{req:1,lock:1,ph:'NEG-A'}),F('nom','Raison sociale','text',{req:1}),F('type','Type','sel',{opts:['Produits pétroliers','Bitume','Inspection','Terminal','Transport','Travaux','Autre']}),F('pays','Pays','text'),F('contact','Contact','text')]},
+ commandes:{one:'commande',pre:'CMD',fields:[F('date','Date de commande','date',{req:1,def:today}),F('fournisseur','Fournisseur','ref',{ref:'fournisseurs',req:1}),F('produit','Produit','ref',{ref:'produits',req:1}),F('quantite','Quantité (MT)','num',{req:1}),F('prix','Prix d\'achat (¤/MT)','num',{h:'Par exemple : moyenne de cotation de la période + prime.'}),F('incoterm','Incoterm','sel',{opts:['CIF','CFR','FOB','DAP'],def:'CIF'}),F('fen1','Fenêtre de livraison : début','date'),F('fen2','Fenêtre de livraison : fin','date')]},
+ cargaisons:{one:'cargaison',pre:'CGO',fields:[F('commande','Commande','ref',{ref:'commandes',req:1}),F('navire','Navire','text',{req:1}),F('imo','N° IMO','text'),F('date_bl','Date du connaissement (B/L)','date'),F('bl_mt','Quantité B/L (MT)','num',{req:1}),F('nor','Avis de disponibilité (NOR)','dt'),F('fin','Fin de déchargement','dt'),F('planche','Temps de planche alloué (h)','num',{def:72}),F('taux','Taux de surestaries (¤/jour)','num'),F('terre_mt','Quantité mesurée à terre (MT)','num',{h:'Selon le rapport de l\'inspecteur indépendant.'}),F('qualite','Contrôle qualité (inspection)','sel',{opts:['Conforme','Non conforme','En attente'],def:'En attente'})]},
+ receptions:{one:'réception',pre:'REC',pdf:1,fields:[F('date','Date d\'arrivée','date',{req:1,def:today}),F('provenance','Provenance','sel',{opts:['Navire','Camion-citerne','Transfert interne'],def:'Navire'}),F('cargaison','Cargaison','ref',{ref:'cargaisons',show:v=>v.provenance==='Navire'}),F('fournisseur','Fournisseur','ref',{ref:'fournisseurs',show:v=>v.provenance==='Camion-citerne'}),F('camion','Immatriculation du camion','text',{show:v=>v.provenance==='Camion-citerne'}),F('cuve','Cuve de destination','ref',{ref:'cuves',req:1,filter:c=>c.statut==='Active'}),F('volume','Volume reçu (m³ à 15 °C)','num',{req:1}),F('densite','Densité à 15 °C (kg/m³)','num',{h:'Vide = densité type du produit.'}),F('temperature','Température (°C)','num'),F('qualite','Contrôle qualité','sel',{opts:['Conforme','Non conforme','En attente'],def:'Conforme'}),F('operateur','Opérateur','text'),F('document','Document source','text',{ph:'Rapport du terminal, certificat d\'inspection…'})]},
+ sorties:{one:'sortie',pre:'SOR',fields:[F('date','Date','date',{req:1,def:today}),F('type','Type de sortie','sel',{opts:['Transfert ITT','Livraison CIF','Chargement camion','Remplissage fûts','Transfert interne','Consommation interne'],def:'Transfert ITT'}),F('client','Client','ref',{ref:'clients',req:v=>!isInterne(v.type),show:v=>!isInterne(v.type)}),F('produit','Produit','ref',{ref:'produits',req:isCIF,show:isCIF}),F('cuve','Cuve source','ref',{ref:'cuves',req:v=>!isCIF(v),show:v=>!isCIF(v),filter:c=>c.statut==='Active'||c.statut==='En maintenance'}),F('cuve_dest','Cuve de destination','ref',{ref:'cuves',req:v=>v.type==='Transfert interne',show:v=>v.type==='Transfert interne',filter:c=>c.statut==='Active',h:'La réception correspondante est créée automatiquement.'}),F('cargaison','Cargaison d\'origine','ref',{ref:'cargaisons',req:isCIF,show:v=>['Livraison CIF','Transfert ITT'].includes(v.type)}),F('camion','Camion','ref',{ref:'camions',req:v=>v.type==='Chargement camion',show:v=>isTruck(v.type)}),F('chauffeur','Chauffeur','ref',{ref:'chauffeurs',show:v=>isTruck(v.type)}),F('nb_futs','Nombre de fûts','num',{show:v=>v.type==='Remplissage fûts'}),F('volume','Volume (m³ à 15 °C)','num',{req:1}),F('densite','Densité à 15 °C (kg/m³)','num',{h:'Vide = densité type du produit.'}),F('bon','N° de bon','text'),F('facture','Facture','ref',{ref:'factures',show:v=>!isInterne(v.type),h:'À rattacher une fois la facture créée.'}),F('operateur','Opérateur','text')]},
+ jaugeages:{one:'jaugeage',fields:[F('cuve','Cuve','ref',{ref:'cuves',req:1}),F('date','Date et heure','dt',{req:1,def:nowDT}),F('hauteur','Hauteur mesurée (mm)','num'),F('volume_mesure','Volume mesuré (m³ à 15 °C)','num',{req:1,h:'Lu dans le barème de la cuve, corrigé à 15 °C.'}),F('temperature','Température (°C)','num'),F('operateur','Opérateur','text'),F('cause','Cause probable de l\'écart','sel',{opts:CAUSES}),F('explication','Explication et mesures prises','area',{w:1,ph:'Ex. : joint de vanne remplacé, barème à recalibrer…'}),F('valide','Intégrer l\'écart au stock (perte ou gain validé)','bool',{w:1})]},
+ camions:{one:'camion',key:'immat',fields:[F('immat','Immatriculation','text',{req:1,lock:1}),F('transporteur','Transporteur','text'),F('type','Type','sel',{opts:['Citerne calorifugée (bitume)','Citerne carburant','Plateau (fûts)']}),F('capacite','Capacité (m³)','num'),F('cert_validite','Certificat de jaugeage / conformité valable jusqu\'au','date'),F('statut','Statut','sel',{opts:['Autorisé','Suspendu'],def:'Autorisé'})]},
+ chauffeurs:{one:'chauffeur',fields:[F('nom','Nom et prénom','text',{req:1}),F('telephone','Téléphone','text'),F('transporteur','Transporteur','text'),F('permis','N° de permis','text'),F('permis_validite','Permis valable jusqu\'au','date'),F('hse_date','Dernière formation HSE','date',{h:'Durée de validité réglable dans la configuration.'})]},
+ employes:{one:'fiche employé',key:'matricule',fields:[F('matricule','Matricule','text',{req:1,lock:1,ph:'E012'}),F('nom','Nom et prénom','text',{req:1}),F('fonction','Fonction','text',{req:1}),F('service','Service','sel',{opts:SERVICES}),F('telephone','Téléphone','text'),F('date_embauche','Date d\'embauche','date'),F('salaire','Salaire de base mensuel (¤)','num',{req:1}),F('statut','Statut','sel',{opts:['Actif','En congé','Sorti'],def:'Actif'})]},
+ paie:{one:'fiche de paie',pre:'PAIE',pdf:1,fields:[F('employe','Employé','ref',{ref:'employes',req:1,filter:e=>e.statut!=='Sorti'}),F('periode','Période','month',{req:1,def:thisMonth,ph:'AAAA-MM'}),F('base','Salaire de base (¤)','num',{req:1,h:'Repris de la fiche de l\'employé.'}),F('primes','Primes (¤)','num',{def:0}),F('heures_sup','Heures supplémentaires (¤)','num',{def:0}),F('deductions','Retenues et cotisations (¤)','num',{def:0}),F('avance','Avance sur salaire (¤)','num',{def:0}),F('date_paiement','Date de paiement','date'),F('statut','Statut','sel',{opts:['Brouillon','Réglé'],def:'Brouillon'}),F('note','Observations','area',{w:1})]},
+ factures:{one:'facture',pre:'FAC',pdf:1,fields:[F('date','Date d\'émission','date',{req:1,def:today}),F('client','Client','ref',{ref:'clients',req:1}),F('produit','Produit','ref',{ref:'produits',req:1}),F('prix','Prix unitaire (¤ par unité du produit)','num',{req:1}),F('remise','Remise (%)','num',{h:'Reprise de la fiche client si vide.'}),F('tva','TVA (%)','num',{def:()=>CFG.tva}),F('note','Observations','area',{w:1})]},
+ paiements:{one:'paiement',pre:'PAY',fields:[F('date','Date','date',{req:1,def:today}),F('sens','Sens','sel',{opts:['Encaissement','Décaissement'],def:'Encaissement'}),F('facture','Facture client','ref',{ref:'factures',req:v=>v.sens==='Encaissement',show:v=>v.sens==='Encaissement'}),F('commande','Commande fournisseur','ref',{ref:'commandes',show:v=>v.sens==='Décaissement'}),F('montant','Montant (¤)','num',{req:1}),F('moyen','Moyen','sel',{opts:['Virement','Chèque','Espèces','Lettre de crédit'],def:'Virement'}),F('reference','Référence bancaire','text'),F('financement','Ligne de financement','text',{show:v=>v.sens==='Décaissement',ph:'ex. crédit documentaire'})]},
+ depenses:{one:'dépense',pre:'DEP',fields:[F('date','Date','date',{req:1,def:today}),F('categorie','Catégorie','sel',{opts:['Location des cuves','Inspection','Fret','Assurance','Financement','Maintenance','Énergie','Transport','Fournitures','Autre'],req:1}),F('montant','Montant (¤)','num',{req:1}),F('fournisseur','Prestataire','ref',{ref:'fournisseurs'}),F('cargaison','Cargaison concernée','ref',{ref:'cargaisons',h:'Pour l\'inclure dans le coût de revient.'}),F('description','Description','text',{w:1})]},
+ maintenance:{one:'intervention',pre:'MNT',fields:[F('date','Date','date',{req:1,def:today}),F('statut','Statut','sel',{opts:['Planifiée','En cours','Terminée'],def:'Planifiée'}),F('cible','Équipement','sel',{opts:['Cuve','Pompe','Chaufferie','Poste de chargement','Réseau incendie','Groupe électrogène','Autre'],def:'Cuve'}),F('cuve','Cuve','ref',{ref:'cuves',show:v=>v.cible==='Cuve',req:v=>v.cible==='Cuve'}),F('equipement','Repère de l\'équipement','text',{show:v=>v.cible!=='Cuve'}),F('type','Type','sel',{opts:['Préventive','Corrective','Inspection (API 653)','Inspection réglementaire','Étalonnage','Construction / réhabilitation'],def:'Préventive'}),F('echeance','Date prévue / prochaine échéance','date'),F('intervenant','Intervenant','text'),F('cout','Coût (¤)','num'),F('description','Description','text',{w:1})]}
+};
+
+/* aides en direct, contrôles bloquants et pré-remplissages dans les formulaires */
+const B=t=>`<b style="color:var(--bad)">${t}</b>`;
+const LIVE={
+ receptions:v=>{const cu=get('cuves',v.cuve);if(!cu)return '';const i=cuveInfo(cu);const d=num(v.densite)||densP(i.p);const add=num(v.volume);
+   let t=`${esc(cu.code)} : stock ${fmt(i.stock)} m³, place libre ${fmt(i.libre)} m³.`;if(add)t+=` Cette réception : ${fmt(mtOf(add,d),1)} MT.`;if(add>i.libre)t+=' '+B('Le volume dépasse la place libre.');return t},
+ sorties:v=>{if(isCIF(v)){const g=get('cargaisons',v.cargaison);return g?`Livraison directe depuis le navire ${esc(g.navire)} (${esc(g.numero)}) : aucun mouvement dans les cuves.`:''}
+   const cu=get('cuves',v.cuve);if(!cu)return '';const i=cuveInfo(cu);const vol=num(v.volume);const d=num(v.densite)||densP(i.p);
+   let t=`Disponible dans ${esc(cu.code)} (${esc(i.p?.nom||'')}) : ${fmt(i.stock)} m³ = ${fmt(i.mt,1)} MT.`;if(vol)t+=` Cette sortie : ${fmt(mtOf(vol,d),1)} MT.`;
+   if(v.type==='Transfert ITT'&&v.cargaison){const g=get('cargaisons',v.cargaison);const gp=get('produits',get('commandes',g?.commande)?.produit);if(gp&&gp.id!==cu.produit)t+=' '+B('Le produit de la cargaison ne correspond pas à la cuve.')}
+   if(v.type==='Transfert interne'){const de=get('cuves',v.cuve_dest);if(de){const j=cuveInfo(de);t+=` Destination ${esc(de.code)} : place libre ${fmt(j.libre)} m³.`}}
+   const c=get('camions',v.camion);if(c&&isTruck(v.type)&&!camInfo(c).ok)t+=' '+B('Camion non autorisé (certificat ou statut).');
+   const ch=get('chauffeurs',v.chauffeur);if(ch&&isTruck(v.type)&&!chfInfo(ch).ok)t+=' '+B('Chauffeur à régulariser.');return t},
+ jaugeages:(v,rec)=>{const cu=get('cuves',v.cuve);if(!cu)return '';const th=cuveStock(cu.id,(v.date||'').slice(0,10)||null,rec?.id);let t=`Stock théorique de ${esc(cu.code)} à cette date : <b>${fmt(th)} m³</b>.`;
+   if(num(v.hauteur)&&num(cu.hauteur_max))t+=` Estimation linéaire depuis la hauteur : ${fmt(num(v.hauteur)/num(cu.hauteur_max)*num(cu.capacite))} m³ (à remplacer par la valeur du barème).`;
+   if(v.volume_mesure!==''&&v.volume_mesure!=null){const e=num(v.volume_mesure)-th;const ep=th?e/th:0;t+=` Écart : <b style="color:${e<0?'var(--bad)':'var(--ok)'}">${e>0?'+':''}${fmt(e,1)} m³</b> (${fmt(ep*100,2)} %).`;if(Math.abs(ep)>TOL&&!v.cause)t+=' '+B('Hors tolérance : indiquez une cause.')}return t},
+ cargaisons:v=>{const g=cgoInfo(v);let t='';if(g.duree!==null)t+=`Escale : ${fmt(g.duree,1)} h, dont ${fmt(g.hsur,1)} h au-delà du temps alloué = ${cur(g.msur)} de surestaries.`;if(g.ecp!==null)t+=` Écart B/L / terre : ${fmt(g.ecart,3)} MT (${fmt(g.ecp*100,2)} %)${g.alerte?' '+B('hors tolérance'):''}.`;return t},
+ factures:(v,rec)=>{const p=get('produits',v.produit);const u=p?.unite||'MT';if(!rec)return `Prix à saisir par ${esc(u)}. Après l'enregistrement, rattachez les sorties à cette facture depuis le module Sorties : quantités et montants se calculent seuls.`;
+   const i=facInfo(Object.assign({},rec,v,{remise:num(v.remise),tva:num(v.tva),prix:num(v.prix)}));return `${i.lignes.length} sortie(s) rattachée(s) : ${fmt(i.qte,3)} ${esc(u)} (${fmt(i.vol,1)} m³). Brut ${cur(i.brut,2)}, remise ${cur(i.rem,2)}, total TTC <b>${cur(i.ttc,2)}</b>.`},
+ paie:v=>{const i=paieInfo(v);if(!v.employe)return '';return `Salaire brut : <b>${cur(i.brut,2)}</b> · retenues et avance : ${cur(i.ret,2)} · <b>net à payer : ${cur(i.net,2)}</b>.`}
+};
+const CHECK={
+ sorties:(v,rec)=>{
+  const c=get('camions',v.camion);if(c&&isTruck(v.type)&&!camInfo(c).ok)return `Chargement refusé : le camion ${c.immat} n'est pas autorisé (certificat expiré ou camion suspendu).`;
+  const ch=get('chauffeurs',v.chauffeur);if(ch&&isTruck(v.type)&&!chfInfo(ch).ok)return `Chargement refusé : ${ch.nom} n'est pas habilité (permis ou formation HSE à régulariser).`;
+  if(isCIF(v))return '';const cu=get('cuves',v.cuve);if(!cu)return '';
+  if(cu.statut&&cu.statut!=='Active'&&cu.statut!=='En maintenance')return `La cuve ${cu.code} n'est pas en service (${cu.statut}).`;
+  const dispo=cuveStock(cu.id)+(rec&&rec.cuve===cu.id&&rec.type!=='Livraison CIF'?num(rec.volume):0);
+  if(num(v.volume)>dispo+0.001)return `Stock insuffisant dans ${cu.code} : ${fmt(dispo,1)} m³ disponibles.`;
+  if(v.type==='Transfert interne'){const de=get('cuves',v.cuve_dest);if(!de)return '';if(de.id===cu.id)return 'La cuve de destination doit être différente de la cuve source.';
+   if(de.produit!==cu.produit)return `Produits différents : ${cu.code} contient ${prodOfCuve(cu)?.nom||'?'}, ${de.code} contient ${prodOfCuve(de)?.nom||'?'}.`;
+   const lk=rec?get('receptions','rt-'+rec.id):null;const libre=num(de.capacite)-cuveStock(de.id)+(lk&&lk.cuve===de.id?num(lk.volume):0);
+   if(num(v.volume)>libre+0.001)return `Débordement : il ne reste que ${fmt(libre,1)} m³ de place libre dans ${de.code}.`}
+  return ''},
+ receptions:(v,rec)=>{const cu=get('cuves',v.cuve);if(!cu)return '';if(cu.statut&&cu.statut!=='Active')return `La cuve ${cu.code} n'est pas active (${cu.statut}).`;
+  const libre=num(cu.capacite)-cuveStock(cu.id)+(rec&&rec.cuve===cu.id?num(rec.volume):0);if(num(v.volume)>libre+0.001)return `Débordement : il ne reste que ${fmt(libre,1)} m³ de place libre dans ${cu.code}.`;return ''},
+ paie:(v,rec)=>{if(!/^\d{4}-\d{2}$/.test(v.periode||''))return 'Période invalide : utilisez le format AAAA-MM.';const d=D.paie.find(p=>p.employe===v.employe&&p.periode===v.periode&&p.id!==rec?.id);return d?`Une fiche de paie existe déjà pour cet employé en ${fm(v.periode)} (${d.numero}).`:''}
+};
+const HOOK={ /* pré-remplit un champ vide quand un autre change */
+ paie:(v,set)=>{const e=get('employes',v.employe);if(e)set('base',e.salaire)},
+ factures:(v,set)=>{const c=get('clients',v.client);if(c&&num(c.remise))set('remise',c.remise)},
+ sorties:(v,set)=>{if(v.type==='Chargement camion'){const c=get('camions',v.camion);if(c&&num(c.capacite))set('volume',c.capacite)}}
+};
+
+/* ================================================================ listes (colonnes) */
+const ref=(c,id,f)=>{const r=get(c,id);return r?esc(f?f(r):LAB[c](r)):'<span class="sub">–</span>'};
+const qualChip=q=>q?chip(q,q==='Conforme'?'ok':q==='Non conforme'?'bad':'warn'):'';
+const prodCell=p=>p?dot(p.couleur)+esc(p.nom):'–';
+const SCHIP={'Transfert ITT':'info','Livraison CIF':'mut','Chargement camion':'warn','Remplissage fûts':'warn','Transfert interne':'mut','Consommation interne':'mut'};
+const L={
+ produits:{sort:(a,b)=>(a.code||'').localeCompare(b.code||''),cols:[
+  ['Code',r=>`<span class="code">${esc(r.code)}</span>`],['Produit',r=>dot(r.couleur)+esc(r.nom)],['Catégorie',r=>esc(r.categorie)],['Unité',r=>esc(r.unite||'MT')],
+  ['Densité 15 °C',r=>fmt(r.densite,1),'num'],['Prix réf. ¤/MT',r=>fmt(r.prix_ref,2),'num'],['Seuil',r=>fmt(r.seuil)+' %','num'],
+  ['Stock (MT)',r=>fmt(D.cuves.filter(c=>c.produit===r.id&&siteOk(c)).reduce((a,c)=>a+cuveInfo(c).mt,0),1),'num'],['Cuves',r=>D.cuves.filter(c=>c.produit===r.id).length,'num']]},
+ clients:{sort:(a,b)=>(a.nom||'').localeCompare(b.nom||''),cols:[
+  ['Code',r=>`<span class="code">${esc(r.code)}</span>`],['Raison sociale',r=>`${esc(r.nom)}<span class="sub">${esc(r.contact||'')}${r.telephone?' · '+esc(r.telephone):''}</span>`],['Type',r=>r.type==='Station-service'?chip(r.type,'info'):esc(r.type)],['Délai',r=>fmt(r.delai)+' j','num'],['Remise',r=>num(r.remise)?fmt(r.remise,1)+' %':'–','num'],
+  ['Volume livré (MT)',r=>fmt(cliInfo(r).vol,1),'num'],['Facturé (¤)',r=>fmt(cliInfo(r).ca),'num'],['Solde dû (¤)',r=>{const s=cliInfo(r).solde;return `<span style="color:${s>0.5?'var(--bad)':'inherit'}">${fmt(s)}</span>`},'num']]},
+ fournisseurs:{sort:(a,b)=>(a.nom||'').localeCompare(b.nom||''),cols:[
+  ['Code',r=>`<span class="code">${esc(r.code)}</span>`],['Raison sociale',r=>esc(r.nom)],['Type',r=>esc(r.type)],['Pays',r=>esc(r.pays)],['Contact',r=>esc(r.contact)],
+  ['Commandes',r=>D.commandes.filter(c=>c.fournisseur===r.id).length,'num'],['Dépenses (¤)',r=>fmt(D.depenses.filter(d=>d.fournisseur===r.id).reduce((a,d)=>a+num(d.montant),0)),'num']]},
+ commandes:{sort:(a,b)=>(b.date||'').localeCompare(a.date||''),cols:[
+  ['N°',r=>`<span class="code">${esc(r.numero)}</span>`],['Date',r=>fd(r.date)],['Fournisseur',r=>ref('fournisseurs',r.fournisseur)],['Produit',r=>prodCell(get('produits',r.produit))],
+  ['Quantité (MT)',r=>fmt(r.quantite),'num'],['Prix ¤/MT',r=>fmt(r.prix,2),'num'],['Montant (¤)',r=>fmt(cmdInfo(r).montant),'num'],['Reçu B/L (MT)',r=>fmt(cmdInfo(r).recu),'num'],
+  ['Payé (¤)',r=>fmt(cmdInfo(r).paye),'num'],['Fenêtre',r=>r.fen1?`${fd(r.fen1)}<span class="sub">au ${fd(r.fen2)}</span>`:'–'],['Statut',r=>{const s=cmdInfo(r).statut;return chip(s[0],s[1])}]]},
+ cargaisons:{sort:(a,b)=>(b.nor||b.date_bl||'').localeCompare(a.nor||a.date_bl||''),cols:[
+  ['N°',r=>`<span class="code">${esc(r.numero)}</span>`],['Navire',r=>`${esc(r.navire)}<span class="sub">${esc(get('commandes',r.commande)?.numero||'')}</span>`],['Produit',r=>{const p=cgoInfo(r).p;return p?dot(p.couleur)+esc(p.code):'–'}],
+  ['NOR',r=>fdt(r.nor)],['B/L (MT)',r=>fmt(r.bl_mt,3),'num'],['Terre (MT)',r=>fmt(r.terre_mt,3),'num'],
+  ['Écart',r=>{const i=cgoInfo(r);return i.ecp===null?'–':`<span style="color:${i.alerte?'var(--bad)':'inherit'}">${fmt(i.ecp*100,2)} %</span>`},'num'],
+  ['Escale (h)',r=>fmt(cgoInfo(r).duree,1),'num'],['Surestaries (¤)',r=>fmt(cgoInfo(r).msur),'num'],['Qualité',r=>qualChip(r.qualite)]]},
+ receptions:{sort:(a,b)=>(b.date||'').localeCompare(a.date||'')||(b.numero||'').localeCompare(a.numero||''),pdf:[['ticket','Ticket']],cols:[
+  ['Date',r=>fd(r.date)],['N°',r=>`<span class="code">${esc(r.numero)}</span>`],
+  ['Provenance',r=>r.provenance==='Navire'?`Navire<span class="sub">${ref('cargaisons',r.cargaison)}</span>`:r.provenance==='Transfert interne'?`Transfert interne<span class="sub">${r.sortie?'depuis '+esc(get('cuves',get('sorties',r.sortie)?.cuve)?.code||'')+' · '+esc(get('sorties',r.sortie)?.numero||''):esc(r.document||'')}</span>`:`${esc(r.provenance||'')}<span class="sub">${ref('fournisseurs',r.fournisseur)}${r.camion?' · '+esc(r.camion):''}</span>`],
+  ['Produit',r=>prodCell(recInfo(r).p)],['Cuve',r=>`<span class="code">${esc(get('cuves',r.cuve)?.code||'–')}</span>`],
+  ['Volume (m³)',r=>`<b style="color:var(--in)">+${fmt(r.volume)}</b>`,'num'],['Tonnes',r=>fmt(recInfo(r).mt,1),'num'],['Qualité',r=>qualChip(r.qualite)],['Opérateur',r=>esc(r.operateur)]]},
+ sorties:{sort:(a,b)=>(b.date||'').localeCompare(a.date||'')||(b.numero||'').localeCompare(a.numero||''),pdf:[['bon','Bon'],['ticket','Ticket']],cols:[
+  ['Date',r=>fd(r.date)],['N°',r=>`<span class="code">${esc(r.numero)}</span>${r.bon?`<span class="sub">Bon ${esc(r.bon)}</span>`:''}`],
+  ['Type',r=>chip(r.type,SCHIP[r.type]||'mut')],
+  ['Client',r=>r.client?ref('clients',r.client):r.type==='Transfert interne'?`<span class="sub">vers ${esc(get('cuves',r.cuve_dest)?.code||'?')}</span>`:'<span class="sub">Interne</span>'],['Produit',r=>prodCell(sorInfo(r).p)],
+  ['Origine',r=>r.type==='Livraison CIF'?`Navire<span class="sub">${esc(get('cargaisons',r.cargaison)?.numero||'')}</span>`:`<span class="code">${esc(get('cuves',r.cuve)?.code||'–')}</span>`],
+  ['Transport',r=>r.camion?`<span class="code">${esc(get('camions',r.camion)?.immat||'')}</span><span class="sub">${esc(get('chauffeurs',r.chauffeur)?.nom||'')}${r.nb_futs?' · '+fmt(r.nb_futs)+' fûts':''}</span>`:'<span class="sub">–</span>'],
+  ['Volume (m³)',r=>`<b style="color:var(--out)">−${fmt(r.volume,r.volume%1?1:0)}</b>`,'num'],['Tonnes',r=>fmt(sorInfo(r).mt,1),'num'],
+  ['Facture',r=>r.facture?`<span class="code">${esc(get('factures',r.facture)?.numero||'')}</span>`:(isInterne(r.type)?'<span class="sub">–</span>':chip('À facturer','warn'))]]},
+ jaugeages:{sort:(a,b)=>(b.date||'').localeCompare(a.date||''),cols:[
+  ['Date et heure',r=>fdt(r.date)],['Cuve',r=>`<span class="code">${esc(get('cuves',r.cuve)?.code||'–')}</span>`],['Produit',r=>prodCell(jauInfo(r).p)],
+  ['Hauteur (mm)',r=>fmt(r.hauteur),'num'],['Mesuré (m³)',r=>fmt(r.volume_mesure,1),'num'],['Théorique (m³)',r=>fmt(r.volume_theorique,1),'num'],
+  ['Écart',r=>{const i=jauInfo(r);const k=i.hors?'bad':i.e<0?'warn':'ok';return chip(`${i.e>0?'+':''}${fmt(i.e,1)} m³ · ${fmt(i.ep*100,2)} %`,k)},'num'],
+  ['Cause',r=>r.cause?`${esc(r.cause)}${r.explication?`<span class="sub">${esc(r.explication)}</span>`:''}`:(jauInfo(r).hors?chip('À renseigner','warn'):'<span class="sub">–</span>')],
+  ['Stock',r=>r.valide?chip('Écart intégré','info'):chip('Non intégré','mut')],['Opérateur',r=>esc(r.operateur)]]},
+ camions:{sort:(a,b)=>(a.immat||'').localeCompare(b.immat||''),cols:[
+  ['Immatriculation',r=>`<span class="code">${esc(r.immat)}</span>`],['Transporteur',r=>esc(r.transporteur)],['Type',r=>esc(r.type)],['Capacité (m³)',r=>fmt(r.capacite),'num'],
+  ['Certificat valable jusqu\'au',r=>fd(r.cert_validite)],['Statut',r=>{const i=camInfo(r);return r.statut==='Suspendu'?chip('Suspendu','bad'):i.cert?chip('Autorisé','ok'):chip('Certificat expiré','bad')}],['Rotations',r=>camInfo(r).rot,'num']]},
+ chauffeurs:{sort:(a,b)=>(a.nom||'').localeCompare(b.nom||''),cols:[
+  ['Nom et prénom',r=>`<b>${esc(r.nom)}</b><span class="sub">${esc(r.transporteur||'')}</span>`],['Téléphone',r=>`<span class="mono">${esc(r.telephone)}</span>`],['Permis',r=>`<span class="code">${esc(r.permis)}</span><span class="sub">jusqu'au ${fd(r.permis_validite)}</span>`],
+  ['Formation HSE',r=>`${fd(r.hse_date)}<span class="sub">valable jusqu'au ${fd(chfInfo(r).hseFin)}</span>`],['Statut de sécurité',r=>{const i=chfInfo(r);return i.ok?chip('Autorisé','ok'):chip(!i.permis?'Permis expiré':'HSE à renouveler','bad')}],['Rotations',r=>chfInfo(r).rot,'num']]},
+ employes:{sort:(a,b)=>(a.matricule||'').localeCompare(b.matricule||''),cols:[
+  ['Matricule',r=>`<span class="code">${esc(r.matricule)}</span>`],['Nom et prénom',r=>`<b>${esc(r.nom)}</b><span class="sub">${esc(r.fonction||'')}</span>`],['Service',r=>esc(r.service)],['Téléphone',r=>`<span class="mono">${esc(r.telephone)}</span>`],
+  ['Embauche',r=>fd(r.date_embauche)],['Salaire de base (¤)',r=>fmt(r.salaire),'num'],['Statut',r=>chip(r.statut||'Actif',{Actif:'ok','En congé':'warn',Sorti:'mut'}[r.statut||'Actif'])],
+  ['Dernière paie',r=>{const p=D.paie.filter(x=>x.employe===r.id).sort((a,b)=>(b.periode||'').localeCompare(a.periode||''))[0];return p?`${fm(p.periode)}<span class="sub">${p.statut}</span>`:'<span class="sub">–</span>'}]]},
+ paie:{sort:(a,b)=>(b.periode||'').localeCompare(a.periode||'')||(a.employe||'').localeCompare(b.employe||''),pdf:[['bulletin','Bulletin']],cols:[
+  ['N°',r=>`<span class="code">${esc(r.numero)}</span>`],['Période',r=>fm(r.periode)],['Employé',r=>{const e=get('employes',r.employe);return e?`<b>${esc(e.nom)}</b><span class="sub">${esc(e.matricule)} · ${esc(e.fonction||'')}</span>`:'–'}],
+  ['Brut (¤)',r=>fmt(paieInfo(r).brut),'num'],['Retenues (¤)',r=>fmt(paieInfo(r).ret),'num'],['Net à payer (¤)',r=>`<b>${fmt(paieInfo(r).net)}</b>`,'num'],
+  ['Paiement',r=>fd(r.date_paiement)],['Statut',r=>r.statut==='Réglé'?chip('Réglé','ok'):chip('Brouillon','warn')]]},
+ factures:{sort:(a,b)=>(b.date||'').localeCompare(a.date||'')||(b.numero||'').localeCompare(a.numero||''),pdf:[['facture','PDF']],cols:[
+  ['N°',r=>`<span class="code">${esc(r.numero)}</span>`],['Client',r=>ref('clients',r.client)],['Date',r=>fd(r.date)],['Produit',r=>prodCell(get('produits',r.produit))],
+  ['Volume (m³)',r=>fmt(facInfo(r).vol,1),'num'],['Quantité',r=>{const i=facInfo(r);return `${fmt(i.qte,i.u==='Fût'?0:3)} <span class="sub" style="display:inline">${esc(i.u)}</span>`},'num'],['Remise',r=>num(r.remise)?fmt(r.remise,1)+' %':'–','num'],
+  ['Total TTC (¤)',r=>`<b>${fmt(facInfo(r).ttc)}</b>`,'num'],['Payé (¤)',r=>fmt(facInfo(r).paye),'num'],['Échéance',r=>fd(facInfo(r).ech)],['Statut',r=>{const s=facInfo(r).st;return chip(s[0],s[1])}]]},
+ paiements:{sort:(a,b)=>(b.date||'').localeCompare(a.date||''),cols:[
+  ['Date',r=>fd(r.date)],['N°',r=>`<span class="code">${esc(r.numero)}</span>`],['Sens',r=>r.sens==='Encaissement'?chip('Encaissement','ok'):chip('Décaissement','warn')],
+  ['Objet',r=>r.sens==='Encaissement'?ref('factures',r.facture):ref('commandes',r.commande)],['Montant (¤)',r=>`<b>${fmt(r.montant)}</b>`,'num'],['Moyen',r=>esc(r.moyen)],['Référence',r=>esc(r.reference||r.financement||'')]]},
+ depenses:{sort:(a,b)=>(b.date||'').localeCompare(a.date||''),cols:[
+  ['Date',r=>fd(r.date)],['N°',r=>`<span class="code">${esc(r.numero)}</span>`],['Catégorie',r=>esc(r.categorie)],['Description',r=>esc(r.description)],['Prestataire',r=>ref('fournisseurs',r.fournisseur)],
+  ['Cargaison',r=>r.cargaison?`<span class="code">${esc(get('cargaisons',r.cargaison)?.numero||'')}</span>`:'<span class="sub">–</span>'],['Montant (¤)',r=>`<b>${fmt(r.montant)}</b>`,'num']]},
+ maintenance:{sort:(a,b)=>(b.date||'').localeCompare(a.date||''),cols:[
+  ['Date',r=>fd(r.date)],['N°',r=>`<span class="code">${esc(r.numero)}</span>`],['Équipement',r=>r.cible==='Cuve'?`Cuve <span class="code">${esc(get('cuves',r.cuve)?.code||'')}</span>`:`${esc(r.cible)}<span class="sub">${esc(r.equipement||'')}</span>`],
+  ['Type',r=>esc(r.type)],['Description',r=>esc(r.description)],['Intervenant',r=>esc(r.intervenant)],['Échéance',r=>fd(r.echeance)],['Coût (¤)',r=>fmt(r.cout),'num'],
+  ['Statut',r=>chip(r.statut,{'Planifiée':'info','En cours':'warn','Terminée':'ok'}[r.statut]||'mut')]]}
+};
+
+/* ================================================================ navigation */
+const NAV=[
+ ['Pilotage',[['dashboard','Tableau de bord','dash'],['analyse','Analyse des stocks','chart'],['livre','Livre des stocks','book'],['pertes','Pertes et écarts','loss']]],
+ ['Stockage',[['cuves','Parc de cuves','tank'],['jaugeages','Jaugeages','gauge']]],
+ ['Approvisionnement',[['commandes','Commandes fournisseur','order'],['cargaisons','Cargaisons et navires','ship']]],
+ ['Mouvements',[['receptions','Réceptions (entrées)','in'],['sorties','Sorties et chargements','out']]],
+ ['Flotte et transport',[['camions','Camions-citernes','truck'],['chauffeurs','Chauffeurs habilités','user']]],
+ ['Acteurs et partenaires',[['clients','Clients et stations','users'],['fournisseurs','Fournisseurs','box'],['produits','Produits','drop'],['employes','Ressources humaines','id']]],
+ ['Finances',[['factures','Facturation','inv'],['paiements','Paiements','pay'],['depenses','Dépenses','cost'],['paie','Gestion de la paie','wallet']]],
+ ['Opérations et HSE',[['maintenance','Maintenance','tool'],['config','Configuration et sauvegarde','gear']]]
+];
+const TITLES={},GROUP={};NAV.forEach(([g,items])=>items.forEach(([k,t])=>{TITLES[k]=t;GROUP[k]=g}));
+const DESC={
+ produits:'Produits gérés, unité de facturation, densités de référence et prix servant à valoriser les stocks.',clients:'Stations-service, distributeurs et clients finaux, avec volumes livrés, remises et soldes.',
+ fournisseurs:'Fournisseurs de produits et prestataires (inspection, terminal, transport, travaux).',commandes:'Commandes passées aux fournisseurs, quantités reçues et paiements.',
+ cargaisons:'Navires déchargés : temps d\'escale, surestaries, écart entre connaissement (B/L) et quantité mesurée à terre.',receptions:'Produits entrés dans les cuves : navire, camion-citerne ou transfert interne.',
+ sorties:'Transferts ITT, livraisons CIF, chargements de camions, remplissage de fûts et transferts entre cuves.',jaugeages:'Mesures physiques des cuves comparées au stock théorique, avec la cause des écarts.',
+ camions:'Citernes et plateaux autorisés à charger au dépôt.',chauffeurs:'Chauffeurs habilités : permis et formation HSE à jour.',
+ employes:'Personnel du dépôt : fonctions, services, salaires de base et statut.',paie:'Fiches de paie mensuelles : brut, retenues, net à payer et bulletin PDF.',
+ factures:'Factures clients calculées depuis les sorties rattachées, avec remise, TVA et suivi des règlements.',paiements:'Encaissements clients et paiements fournisseurs.',
+ depenses:'Coûts d\'exploitation : location des cuves, inspection, énergie, maintenance…',maintenance:'Interventions planifiées, en cours et terminées sur les équipements.'
+};
+let CLOSED=new Set();try{CLOSED=new Set(JSON.parse(localStorage.getItem('ps_grp')||'[]'))}catch(e){}
+function buildMenu(){
+  const A=alerts();
+  $('#menu').innerHTML=NAV.map(([g,items])=>{const closed=CLOSED.has(g)&&!items.some(x=>x[0]===S.route);
+    return `<div class="grp${closed?' closed':''}"><button class="grp-t" data-grp="${esc(g)}" aria-expanded="${!closed}">${esc(g)}${ic('chev')}</button>${items.map(([k,t,i])=>`<button class="mi${S.route===k?' on':''}" data-r="${k}">${ic(i)}<span>${esc(t)}</span>${k==='dashboard'&&A.length?`<span class="cnt">${A.length}</span>`:''}</button>`).join('')}</div>`}).join('');
+  $('#bnav').innerHTML=[['dashboard','Accueil','dash'],['cuves','Cuves','tank'],['receptions','Entrées','in'],['sorties','Sorties','out'],['__menu','Menu','menu']].map(([k,t,i])=>`<button data-${k==='__menu'?'menu':'r'}="${k}" class="${S.route===k?'on':''}">${ic(i)}<span>${t}</span></button>`).join('');
+  $('#bell-n').textContent=A.length?String(A.length):'';
+}
+function go(r){S.route=r;S.q='';S.limit=100;$('#q').value='';try{localStorage.setItem('ps_route',r)}catch(e){}closeSide();closeNotif();render();window.scrollTo(0,0)}
+function closeSide(){$('#side').classList.remove('open');$('#scrim').classList.remove('on')}
+
+/* ================================================================ composants */
+function vh(title,desc,acts=''){return `<div class="vh"><div><h1>${esc(title)}</h1>${desc?`<p>${desc}</p>`:''}</div><div class="acts">${acts}</div></div>`}
+function addBtn(c,label){return canWrite&&db?`<button class="btn pri" data-add="${c}">${ic('plus')}${esc(label)}</button>`:''}
+function kpi(l,v,s,k='',i=''){return `<div class="kpi ${k}">${i?`<span class="ki">${ic(i)}</span>`:''}<span class="lbl">${esc(l)}</span><span class="v">${v}</span>${s?`<span class="s">${s}</span>`:''}</div>`}
+function emptyDb(){
+  if(dbState==='loading')return `<div class="panel empty"><b>Chargement des données…</b>Connexion à la base.</div>`;
+  if(dbState==='absent')return `<div class="panel empty"><b>Base de données indisponible</b>Le serveur ne répond pas. Vérifiez qu'il est démarré.</div>`;
+  return '';
+}
+function rowActs(coll,r){
+  const def=L[coll];let h='';
+  if(def.pdf)h+=def.pdf.map(([k,t])=>`<button class="ib pdf" data-pdf="${k}" data-coll="${coll}" data-id="${esc(r.id)}" title="Télécharger : ${esc(t)}">${ic('dl',14)}${esc(t)}</button>`).join('');
+  if(canWrite&&db){
+    if(coll==='receptions'&&r.sortie)h+=`<span class="chip mut" title="Créée par le transfert ${esc(get('sorties',r.sortie)?.numero||'')} : modifiez le transfert">Auto</span>`;
+    else h+=`<button class="ib" data-edit="${coll}" data-id="${esc(r.id)}" title="Modifier">${ic('edit')}</button><button class="ib" data-del="${coll}" data-id="${esc(r.id)}" title="Supprimer">${ic('del')}</button>`;
+  }
+  return h;
+}
+function table(coll,rows){
+  const def=L[coll];const q=S.q.trim().toLowerCase();
+  if(!rows.length)return `<div class="panel empty"><b>Aucun enregistrement</b>${canWrite&&db?`Utilisez le bouton « Ajouter » pour créer le premier.`:''}</div>`;
+  let body=rows.slice().sort(def.sort);
+  if(q)body=body.filter(r=>def.cols.map(c=>strip(c[1](r))).join(' ').toLowerCase().includes(q));
+  if(!body.length)return `<div class="panel empty"><b>Aucun résultat pour « ${esc(S.q)} »</b>Modifiez la recherche en haut de page.</div>`;
+  const n=body.length;const shown=body.slice(0,S.limit);const heads=def.cols.map(c=>T(c[0]));
+  return `<div class="tw"><table class="rt"><thead><tr>${heads.map((h,i)=>`<th class="${def.cols[i][2]||''}">${esc(h)}</th>`).join('')}<th class="num">Actions</th></tr></thead><tbody>${
+    shown.map(r=>`<tr>${def.cols.map((c,i)=>`<td class="${c[2]||''}" data-l="${esc(heads[i])}"><div>${c[1](r)}</div></td>`).join('')}<td class="act">${rowActs(coll,r)}</td></tr>`).join('')
+  }</tbody></table>${n>S.limit?`<div class="more"><button class="btn" data-more>Afficher ${fmt(Math.min(100,n-S.limit))} de plus (${fmt(n-S.limit)} restants)</button></div>`:''}</div>`;
+}
+function vList(coll){
+  const e=emptyDb();
+  let kp='',extra='';const rows=D[coll];
+  if(coll==='factures'&&rows.length){let ttc=0,paye=0,ech=0,af=0;rows.forEach(f=>{const i=facInfo(f);ttc+=i.ttc;paye+=i.paye;if(i.st[0]==='Échue')ech+=i.solde});af=D.sorties.filter(o=>!o.facture&&!isInterne(o.type)).length;
+    kp=`<div class="kpis">${kpi('Total facturé',cur(ttc),'','','inv')}${kpi('Encaissé',cur(paye),fmt(ttc?paye/ttc*100:0,1)+' % du facturé','ok','pay')}${kpi('Reste à encaisser',cur(ttc-paye),'','','wallet')}${kpi('Dont échu',cur(ech),'',ech>0?'bad':'','loss')}${kpi('Sorties à facturer',fmt(af),'Rattachez-les à une facture',af>0?'warn':'','out')}</div>`}
+  if(coll==='cargaisons'&&rows.length){let s=0,e2=0,n=0;rows.forEach(g=>{const i=cgoInfo(g);s+=i.msur;if(i.ecart!==null)e2+=i.ecart;if(i.alerte)n++});
+    kp=`<div class="kpis">${kpi('Cargaisons',fmt(rows.length),'','','ship')}${kpi('Surestaries cumulées',cur(s),'',s>0?'bad':'','cost')}${kpi('Écart de transport cumulé',fmt(e2,1)+' MT','B/L moins quantité à terre','','loss')}${kpi('Hors tolérance ('+fmt(TOL*100,1)+' %)',fmt(n),'',n?'bad':'ok','gauge')}</div>`}
+  if(coll==='depenses'&&rows.length){const by={};rows.forEach(d=>by[d.categorie]=(by[d.categorie]||0)+num(d.montant));
+    kp=`<div class="kpis">${Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,v])=>kpi(k,cur(v))).join('')}</div>`}
+  if(coll==='employes'&&rows.length){const act=rows.filter(r=>r.statut!=='Sorti');const ms=act.reduce((a,r)=>a+num(r.salaire),0);const by={};act.forEach(r=>by[r.service||'—']=(by[r.service||'—']||0)+1);
+    kp=`<div class="kpis">${kpi('Effectif',fmt(act.length),`${rows.filter(r=>r.statut==='En congé').length} en congé · ${rows.filter(r=>r.statut==='Sorti').length} sorti(s)`,'acc','users')}${kpi('Masse salariale de base',cur(ms),'par mois, hors primes','','wallet')}${kpi('Salaire moyen',cur(act.length?ms/act.length:0),'','','pay')}</div>
+     <section class="panel"><h2 class="sec">Effectif par service</h2><div class="filters">${Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,v])=>chip(`${k} : ${v}`,'info')).join('')}</div></section>`}
+  if(coll==='paie'){const per=D.paie.map(p=>p.periode).sort().pop()||thisMonth();const cur_=D.paie.filter(p=>p.periode===per);let net=0,br=0;cur_.forEach(p=>{const i=paieInfo(p);net+=i.net;br+=i.brut});
+    const y=per.slice(0,4);const an=D.paie.filter(p=>(p.periode||'').startsWith(y)).reduce((a,p)=>a+paieInfo(p).net,0);const brou=D.paie.filter(p=>p.statut!=='Réglé').length;
+    if(rows.length)kp=`<div class="kpis">${kpi('Dernière période',fm(per),cur_.length+' fiche(s)','acc','cal')}${kpi('Brut de la période',cur(br),'','','wallet')}${kpi('Net de la période',cur(net),'','','pay')}${kpi('Net cumulé '+y,cur(an),'','','chart')}${kpi('Fiches en brouillon',fmt(brou),'À régler',brou?'warn':'ok','edit')}</div>`;
+    extra=canWrite&&db?`<button class="btn" data-sys="genpaie">${ic('cal')}Préparer la paie de ${esc(fm(thisMonth()))}</button>`:''}
+  if(coll==='maintenance'&&rows.length){const pl=rows.filter(m=>m.statut==='Planifiée'),ec=rows.filter(m=>m.statut==='En cours');const ret=pl.filter(m=>m.echeance&&m.echeance<today()).length;const co=rows.filter(m=>(m.date||'')>=addDays(today(),-365)).reduce((a,m)=>a+num(m.cout),0);
+    kp=`<div class="kpis">${kpi('Planifiées',fmt(pl.length),ret?ret+' en retard':'',ret?'bad':'','cal')}${kpi('En cours',fmt(ec.length),'','warn','tool')}${kpi('Coût sur 12 mois',cur(co),'','','cost')}</div>`}
+  if(coll==='sorties'&&rows.length){const s30=addDays(today(),-30);const r30=rows.filter(o=>o.date>s30);const by={};r30.forEach(o=>by[o.type]=(by[o.type]||0)+sorInfo(o).mt);
+    kp=`<div class="kpis">${Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,v])=>kpi(k+' · 30 j',fmt(v,0)+' MT',r30.filter(o=>o.type===k).length+' opération(s)')).join('')}</div>`}
+  const one=SCH[coll].one;
+  return vh(TITLES[coll],esc(DESC[coll]||''),extra+addBtn(coll,'Ajouter '+(une(one)?'une ':'un ')+one))+(e||kp+table(coll,rows));
+}
+function tankCard(cu){
+  const i=cuveInfo(cu);const p=i.p;const col=p?.couleur||'#888';const h=Math.min(100,Math.max(0,i.pct*100));
+  const ticks=[75,50,25].map(t=>`<div class="tick" style="bottom:${t}%">${t} %</div>`).join('');
+  const lj=i.last?(()=>{const j=jauInfo(i.last);return `<div class="stat"><span class="lbl">Dernier jaugeage · ${fd(i.last.date)}</span><b style="color:${j.e<0?'var(--bad)':'var(--ok)'}">${j.e>0?'+':''}${fmt(j.e,1)} m³</b></div>`})():`<div class="stat"><span class="lbl">Dernier jaugeage</span><b>–</b></div>`;
+  return `<article class="tank"><div class="tank-h"><div><span class="lbl">Cuve n° ${esc(cu.code)}</span><h3>${dot(col)}${esc(p?.nom||'Produit ?')}</h3></div>
+    <div>${canWrite&&db?`<button class="ib" data-edit="cuves" data-id="${esc(cu.id)}" title="Modifier la cuve">${ic('edit')}</button><button class="ib" data-del="cuves" data-id="${esc(cu.id)}" title="Supprimer la cuve">${ic('del')}</button>`:''}</div></div>
+    <div class="tank-b"><div class="tube" role="img" aria-label="Remplissage ${fmt(h)} %">${ticks}<div class="fill" style="height:${h}%;background:${esc(col)}"></div><div class="pct${h<30?' lo':''}" style="bottom:${h<30?`calc(${h}% + 6px)`:`calc(${Math.min(h,88)}% / 2 + 4px)`}">${fmt(h)} %</div></div>
+    <div class="stats"><div class="stat"><span class="lbl">Stock actuel</span><b>${fmt(i.stock)} m³</b><span class="sub">${fmt(i.mt,1)} MT</span></div><div class="stat"><span class="lbl">Capacité · place libre</span><b>${fmt(i.cap)} m³</b><span class="sub">libre : ${fmt(i.libre)} m³</span></div>${lj}
+    <div class="stat"><span class="lbl">Autonomie au rythme actuel</span><b>${i.auto===null?'–':fmt(Math.floor(i.auto))+' jours'}</b></div></div></div>
+    <div class="tank-f">${chip(i.txt,i.etat)}${canWrite&&db&&cu.statut!=='En construction'?`<button class="btn" data-jauger="${esc(cu.id)}">${ic('gauge')}Jauger</button>`:''}</div></article>`;
+}
+function vCuves(){
+  const e=emptyDb();const list=D.cuves.filter(siteOk).filter(c=>!S.q||(c.code+' '+(prodOfCuve(c)?.nom||'')+' '+c.site).toLowerCase().includes(S.q.toLowerCase())).sort((a,b)=>SITES.indexOf(a.site)-SITES.indexOf(b.site)||(a.code||'').localeCompare(b.code||''));
+  const tot=list.reduce((a,c)=>{const i=cuveInfo(c);a.s+=Math.max(0,i.stock);a.c+=i.cap;a.m+=Math.max(0,i.mt);return a},{s:0,c:0,m:0});
+  return vh('Parc de stockage et cuves','Niveau de chaque cuve calculé en continu à partir des réceptions, des sorties et des écarts de jaugeage validés.',addBtn('cuves','Nouvelle cuve'))+
+   (e||(!D.cuves.length?`<div class="panel empty"><b>Aucune cuve</b>Créez d'abord les produits, puis les cuves.</div>`:
+   `<div class="kpis">${kpi('Cuves affichées',fmt(list.length),'','','tank')}${kpi('Stock total',fmt(tot.s)+' m³',fmt(tot.m)+' MT','acc','drop')}${kpi('Capacité',fmt(tot.c)+' m³','','','box')}${kpi('Taux de remplissage',fmt(tot.c?tot.s/tot.c*100:0,1)+' %','','','gauge')}</div>
+   ${S.site==='all'?SITES.map(s=>{const l=list.filter(c=>c.site===s);return l.length?`<h2 class="sec">${ic('tank',16)}${esc(s)}</h2><div class="tanks">${l.map(tankCard).join('')}</div>`:''}).join(''):`<div class="tanks">${list.map(tankCard).join('')}</div>`}`));
+}
+function vLivre(){
+  const e=emptyDb();if(!S.from){const d=new Date();S.from=iso(new Date(d.getFullYear(),d.getMonth(),1));S.to=today()}
+  const prev=addDays(S.from,-1);const rows=D.cuves.filter(siteOk).sort((a,b)=>SITES.indexOf(a.site)-SITES.indexOf(b.site)||(a.code||'').localeCompare(b.code||'')).map(cu=>{
+    const ins=D.receptions.filter(r=>r.cuve===cu.id&&r.date>=S.from&&r.date<=S.to).reduce((a,r)=>a+num(r.volume),0);
+    const outs=D.sorties.filter(o=>o.cuve===cu.id&&o.type!=='Livraison CIF'&&o.date>=S.from&&o.date<=S.to).reduce((a,o)=>a+num(o.volume),0);
+    const ec=D.jaugeages.filter(j=>j.cuve===cu.id&&j.valide&&j.date.slice(0,10)>=S.from&&j.date.slice(0,10)<=S.to).reduce((a,j)=>a+num(j.volume_mesure)-num(j.volume_theorique),0);
+    const ouv=cuveStock(cu.id,prev),clo=cuveStock(cu.id,S.to);const p=prodOfCuve(cu);return {cu,p,ouv,ins,outs,ec,clo,mt:mtOf(clo,densP(p)),pct:num(cu.capacite)?clo/num(cu.capacite):0}});
+  const q=S.q.toLowerCase();const shown=rows.filter(r=>!q||(r.cu.code+' '+(r.p?.nom||'')).toLowerCase().includes(q));
+  const byP={};shown.forEach(r=>{const k=r.p?.id||'?';byP[k]=byP[k]||{p:r.p,ouv:0,ins:0,outs:0,ec:0,clo:0,mt:0};['ouv','ins','outs','ec','clo','mt'].forEach(f=>byP[k][f]+=r[f])});
+  const cif=D.sorties.filter(o=>o.type==='Livraison CIF'&&o.date>=S.from&&o.date<=S.to&&(S.site==='all'||S.site===SITES[0])).reduce((a,o)=>a+sorInfo(o).mt,0);
+  return vh('Livre des stocks','Ouverture, entrées, sorties, écarts de jaugeage intégrés et stock de clôture par cuve, sur la période choisie.',
+    `<div class="filters"><label class="lbl" for="lf">Du</label><input id="lf" class="inp" type="date" value="${S.from}"><label class="lbl" for="lt">au</label><input id="lt" class="inp" type="date" value="${S.to}"></div>`)+
+   (e||`<div class="tw"><table><thead><tr><th>Cuve</th><th>Produit</th><th class="num">Ouverture (m³)</th><th class="num">Entrées (m³)</th><th class="num">Sorties (m³)</th><th class="num">Écarts intégrés (m³)</th><th class="num">Clôture (m³)</th><th class="num">Clôture (MT)</th><th>Remplissage</th></tr></thead><tbody>${
+    shown.map(r=>`<tr><td><span class="code">${esc(r.cu.code)}</span><span class="sub">${esc(r.cu.site||'')}</span></td><td>${dot(r.p?.couleur)}${esc(r.p?.nom||'')}</td><td class="num">${fmt(r.ouv)}</td><td class="num" style="color:var(--in)">${r.ins?'+'+fmt(r.ins):'–'}</td><td class="num" style="color:var(--out)">${r.outs?'−'+fmt(r.outs):'–'}</td><td class="num">${r.ec?(r.ec>0?'+':'')+fmt(r.ec,1):'–'}</td><td class="num"><b>${fmt(r.clo)}</b></td><td class="num">${fmt(r.mt,1)}</td><td><div style="display:flex;gap:8px;align-items:center"><div class="bar" style="flex:1"><i style="width:${Math.min(100,Math.max(0,r.pct*100))}%;background:${esc(r.p?.couleur||'#888')}"></i></div><span class="mono" style="white-space:nowrap">${fmt(r.pct*100)} %</span></div></td></tr>`).join('')||`<tr><td colspan="9" class="empty">Aucune cuve.</td></tr>`
+   }</tbody></table></div>
+   <h2 class="sec">${ic('drop',16)}Synthèse par produit</h2>
+   <div class="tw"><table><thead><tr><th>Produit</th><th class="num">Ouverture (m³)</th><th class="num">Entrées (m³)</th><th class="num">Sorties (m³)</th><th class="num">Écarts (m³)</th><th class="num">Clôture (m³)</th><th class="num">Clôture (MT)</th><th class="num">${esc(T('Valeur (¤)'))}</th></tr></thead><tbody>${
+    Object.values(byP).map(t=>`<tr><td>${dot(t.p?.couleur)}${esc(t.p?.nom||'?')}</td><td class="num">${fmt(t.ouv)}</td><td class="num">${t.ins?'+'+fmt(t.ins):'–'}</td><td class="num">${t.outs?'−'+fmt(t.outs):'–'}</td><td class="num">${t.ec?fmt(t.ec,1):'–'}</td><td class="num"><b>${fmt(t.clo)}</b></td><td class="num">${fmt(t.mt,1)}</td><td class="num">${fmt(t.mt*num(t.p?.prix_ref))}</td></tr>`).join('')
+   }</tbody></table></div>
+   <p class="sub">Livraisons CIF de la période (directement du navire au client, hors cuves) : <b>${fmt(cif,1)} MT</b>. Les transferts entre cuves apparaissent en sortie de la cuve source et en entrée de la cuve de destination.</p>`);
+}
+function vPertes(){
+  const e=emptyDb();const J=D.jaugeages.filter(j=>siteOk(get('cuves',j.cuve)));let em=0,ev=0,nh=0,sc=0;J.forEach(j=>{const i=jauInfo(j);em+=i.emt;ev+=i.val;if(i.hors){nh++;if(!j.cause)sc++}});
+  let tm=0,tv=0;D.cargaisons.forEach(g=>{const i=cgoInfo(g);if(i.ecart!==null){tm+=i.ecart;tv+=i.val}});
+  const byC={};J.forEach(j=>{const i=jauInfo(j);const k=j.cause||'Non renseignée';const o=byC[k]=byC[k]||{n:0,v:0,mt:0,val:0};o.n++;o.v+=i.e;o.mt+=i.emt;o.val+=i.val});
+  return vh('Pertes et écarts','Écarts constatés au jaugeage des cuves (avec leur cause) et pendant le transport maritime (B/L comparé à la quantité mesurée à terre).')+
+   (e||`<div class="kpis">${kpi('Écarts de jaugeage',(em>0?'+':'')+fmt(em,1)+' MT','Valeur : '+cur(ev),em<0?'bad':'ok','gauge')}
+    ${kpi('Jaugeages hors tolérance',`${nh} / ${J.length}`,'Tolérance : '+fmt(TOL*100,1)+' %',nh?'bad':'ok','loss')}
+    ${kpi('Causes à renseigner',fmt(sc),'Écarts hors tolérance sans explication',sc?'warn':'ok','edit')}
+    ${kpi('Pertes en transport',fmt(tm,1)+' MT','Valeur au prix d\'achat : '+cur(tv),tm>0?'bad':'ok','ship')}</div>
+    <section class="panel"><h2 class="sec">${ic('loss',16)}Écarts de jaugeage par cause</h2><div class="tw" style="border:0"><table><thead><tr><th>Cause</th><th class="num">Jaugeages</th><th class="num">Écart (m³)</th><th class="num">Écart (MT)</th><th class="num">${esc(T('Valeur (¤)'))}</th></tr></thead><tbody>${
+      Object.entries(byC).sort((a,b)=>a[1].mt-b[1].mt).map(([k,o])=>`<tr><td>${esc(k)}</td><td class="num">${o.n}</td><td class="num">${fmt(o.v,1)}</td><td class="num">${fmt(o.mt,2)}</td><td class="num">${fmt(o.val)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Aucun jaugeage.</td></tr>'}</tbody></table></div></section>
+    <h2 class="sec">${ic('gauge',16)}Détail des jaugeages</h2>${J.length?table('jaugeages',J):'<div class="panel empty">Aucun jaugeage.</div>'}
+    <h2 class="sec">${ic('ship',16)}Écarts de transport par cargaison</h2>
+    <div class="tw"><table><thead><tr><th>Cargaison</th><th>Navire</th><th class="num">B/L (MT)</th><th class="num">Terre (MT)</th><th class="num">Écart (MT)</th><th class="num">Écart (%)</th><th class="num">${esc(T('Valeur (¤)'))}</th><th>Contrôle</th></tr></thead><tbody>${
+     D.cargaisons.slice().sort((a,b)=>(b.nor||'').localeCompare(a.nor||'')).map(g=>{const i=cgoInfo(g);return `<tr><td><span class="code">${esc(g.numero)}</span></td><td>${esc(g.navire)}</td><td class="num">${fmt(g.bl_mt,3)}</td><td class="num">${fmt(g.terre_mt,3)}</td><td class="num">${fmt(i.ecart,3)}</td><td class="num">${i.ecp===null?'–':fmt(i.ecp*100,2)+' %'}</td><td class="num">${fmt(i.val)}</td><td>${i.ecp===null?chip('En attente d\'inspection','mut'):i.alerte?chip('Hors tolérance','bad'):chip('Conforme','ok')}</td></tr>`}).join('')||`<tr><td colspan="8" class="empty">Aucune cargaison.</td></tr>`
+    }</tbody></table></div>`);
+}
+
+/* ---------------------------------------------------------------- flux : séries temporelles */
+const isFluxOut=o=>o.type!=='Livraison CIF'&&o.type!=='Transfert interne';
+const isFluxIn=r=>r.provenance!=='Transfert interne';
+function buckets(period){
+  const t=today();let keys=[],keyOf,label;
+  if(period===30){for(let i=29;i>=0;i--)keys.push(addDays(t,-i));keyOf=d=>d;label=k=>k.slice(8,10)+'/'+k.slice(5,7)}
+  else if(period===90){const start=addDays(t,-90);const w0=d=>Math.floor(daysBetween(start,d)/7);for(let i=0;i<=12;i++)keys.push(i);keyOf=d=>d<=start?-1:Math.min(12,w0(d));label=k=>{const a=addDays(start,k*7+1);return a.slice(8,10)+'/'+a.slice(5,7)}}
+  else{const all=[...D.receptions.map(r=>r.date),...D.sorties.map(o=>o.date)].filter(Boolean).sort();const first=(all[0]||t).slice(0,7);let m=first;while(m<=t.slice(0,7)&&keys.length<36){keys.push(m);const d=new Date(m+'-15T12:00:00');d.setMonth(d.getMonth()+1);m=iso(d).slice(0,7)}keyOf=d=>d.slice(0,7);label=k=>MCOURT[+k.slice(5,7)-1]+' '+k.slice(2,4)}
+  return {keys,keyOf,label,since:period?addDays(t,-period):'0000'};
+}
+function fluxSeries(period){
+  const b=buckets(period);const ix=new Map(b.keys.map((k,i)=>[k,i]));const z=()=>b.keys.map(()=>0);const ins=z(),outs=z(),cif=z();
+  D.receptions.forEach(r=>{if(!r.date||r.date<=b.since||!isFluxIn(r)||!siteOk(get('cuves',r.cuve)))return;const i=ix.get(b.keyOf(r.date));if(i!==undefined)ins[i]+=recInfo(r).mt});
+  D.sorties.forEach(o=>{if(!o.date||o.date<=b.since)return;const s=sorInfo(o);if(S.site!=='all'&&s.site!==S.site)return;const i=ix.get(b.keyOf(o.date));if(i===undefined)return;if(o.type==='Livraison CIF')cif[i]+=s.mt;else if(isFluxOut(o))outs[i]+=s.mt});
+  return {labels:b.keys.map(b.label),ins,outs,cif};
+}
+function chartBase(){const mu=css('--muted'),ln=css('--line');return {mu,ln,opts:{responsive:true,maintainAspectRatio:false,animation:{duration:300},interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:mu,boxWidth:12,boxHeight:12,usePointStyle:true}}}}}}
+function destroyCharts(){Object.keys(CH).forEach(k=>{try{CH[k].destroy()}catch(e){}delete CH[k]})}
+function drawFlux(){
+  const el=$('#chFlux');if(!el||typeof Chart==='undefined')return;const f=fluxSeries(S.period);const {mu,ln,opts}=chartBase();
+  const area=(c)=>{const x=css(c);return {borderColor:x,backgroundColor:x+'33',fill:true,tension:.3,pointRadius:S.period===30?0:2,borderWidth:2}};
+  CH.flux=new Chart(el,{type:'line',data:{labels:f.labels,datasets:[Object.assign({label:'Entrées en cuve',data:f.ins},area('--in')),Object.assign({label:'Sorties des cuves',data:f.outs},area('--out')),{label:'Livraisons CIF (hors cuves)',data:f.cif,borderColor:css('--cif'),borderDash:[5,4],fill:false,tension:.3,pointRadius:0,borderWidth:2,hidden:true}]},
+   options:Object.assign({},opts,{plugins:Object.assign({},opts.plugins,{tooltip:{callbacks:{label:c=>`${c.dataset.label} : ${fmt(c.raw,1)} MT`}}}),scales:{x:{ticks:{color:mu,maxRotation:0,autoSkip:true,maxTicksLimit:8},grid:{display:false}},y:{beginAtZero:true,ticks:{color:mu,callback:v=>fmt(v)},grid:{color:ln}}}})});
+}
+function drawDonut(){
+  const el=$('#chDonut');if(!el||typeof Chart==='undefined')return;const {mu,opts}=chartBase();
+  const by={};D.cuves.filter(siteOk).forEach(c=>{const i=cuveInfo(c);if(!i.p||i.mt<=0)return;by[i.p.id]=(by[i.p.id]||0)+i.mt});
+  const P=Object.keys(by).map(k=>get('produits',k)).sort((a,b)=>by[b.id]-by[a.id]);const tot=P.reduce((a,p)=>a+by[p.id],0);
+  CH.donut=new Chart(el,{type:'doughnut',data:{labels:P.map(p=>p.nom),datasets:[{data:P.map(p=>by[p.id]),backgroundColor:P.map(p=>p.couleur||'#888'),borderColor:css('--surface'),borderWidth:2}]},
+   options:Object.assign({},opts,{cutout:'62%',interaction:{mode:'nearest',intersect:true},plugins:{legend:{position:'bottom',labels:{color:mu,boxWidth:10,boxHeight:10,usePointStyle:true,padding:10}},tooltip:{callbacks:{label:c=>`${c.label} : ${fmt(c.raw,0)} MT (${fmt(tot?c.raw/tot*100:0,1)} %)`}}}})});
+}
+function drawProd(){
+  const el=$('#chProd');if(!el||typeof Chart==='undefined')return;const {mu,ln,opts}=chartBase();const A=anaData();
+  CH.prod=new Chart(el,{type:'bar',data:{labels:A.rows.map(r=>r.p.code),datasets:[{label:'Stock actuel',data:A.rows.map(r=>r.stock),backgroundColor:css('--muted')+'88',borderRadius:4,maxBarThickness:30},{label:'Entrées',data:A.rows.map(r=>r.ins),backgroundColor:css('--in'),borderRadius:4,maxBarThickness:30},{label:'Sorties',data:A.rows.map(r=>r.outs),backgroundColor:css('--out'),borderRadius:4,maxBarThickness:30}]},
+   options:Object.assign({},opts,{plugins:Object.assign({},opts.plugins,{tooltip:{callbacks:{title:c=>A.rows[c[0].dataIndex]?.p.nom||'',label:c=>`${c.dataset.label} : ${fmt(c.raw,1)} MT`}}}),scales:{x:{ticks:{color:mu},grid:{display:false}},y:{beginAtZero:true,ticks:{color:mu,callback:v=>fmt(v)},grid:{color:ln}}}})});
+}
+
+/* ---------------------------------------------------------------- tableau de bord */
+function vDash(){
+  const e=emptyDb();
+  if(!e&&!D.produits.length&&!D.cuves.length){return vh('Tableau de bord','')+`<div class="panel empty"><b>La base est vide</b>Commencez par la configuration puis les référentiels, dans cet ordre :<div class="filters" style="justify-content:center;margin-top:12px">${[['config','1. Configuration'],['produits','2. Produits'],['cuves','3. Cuves'],['clients','4. Clients'],['fournisseurs','5. Fournisseurs']].map(([r,t])=>`<button class="btn" data-go="${r}">${t}</button>`).join('')}</div><p style="margin-top:16px">ou, pour découvrir l'outil : <button class="btn pri" data-sys="demo">Charger les données d'exemple</button></p></div>`}
+  const t=today(),s30=addDays(t,-30);
+  const cu=D.cuves.filter(siteOk).filter(c=>c.statut!=='En construction');let st=0,mt=0,val=0,cap=0;cu.forEach(c=>{const i=cuveInfo(c);st+=Math.max(0,i.stock);mt+=Math.max(0,i.mt);val+=Math.max(0,i.val);cap+=i.cap});
+  let em=0,ev=0;D.jaugeages.filter(j=>(j.date||'').slice(0,10)>s30&&siteOk(get('cuves',j.cuve))).forEach(j=>{const i=jauInfo(j);em+=i.emt;ev+=i.val});
+  let ouv=0,ech=0;D.factures.forEach(f=>{const i=facInfo(f);ouv+=Math.max(0,i.solde);if(i.st[0]==='Échue')ech+=i.solde});
+  const ca=D.factures.filter(f=>f.date>s30).reduce((a,f)=>a+facInfo(f).ttc,0);
+  const dep=D.depenses.filter(d=>d.date>s30).reduce((a,d)=>a+num(d.montant),0);
+  const sal=D.paie.filter(p=>p.statut==='Réglé'&&(p.date_paiement||p.periode+'-28')>s30).reduce((a,p)=>a+paieInfo(p).net,0);
+  const rot=D.sorties.filter(o=>isTruck(o.type)&&o.date>s30&&siteOk(get('cuves',o.cuve)));const ncam=new Set(rot.map(o=>o.camion)).size;
+  const A=alerts();
+  const mvts=[...D.receptions.filter(r=>siteOk(get('cuves',r.cuve))).map(r=>({d:r.date,n:r.numero,t:'in',r,x:recInfo(r)})),...D.sorties.filter(o=>S.site==='all'||sorInfo(o).site===S.site).map(o=>({d:o.date,n:o.numero,t:'out',r:o,x:sorInfo(o)}))].sort((a,b)=>(b.d||'').localeCompare(a.d||'')||(b.n||'').localeCompare(a.n||'')).slice(0,8);
+  const ev2=[];const lim=addDays(t,30);
+  D.maintenance.forEach(m=>{if(m.statut!=='Terminée'&&m.echeance&&m.echeance<=lim)ev2.push([m.echeance,`${m.description||m.type}`,m.cible==='Cuve'?'Cuve '+(get('cuves',m.cuve)?.code||''):m.cible+' '+(m.equipement||''),'maintenance',m.echeance<t?'bad':'info'])});
+  D.factures.forEach(f=>{const i=facInfo(f);if(i.solde>0.5&&i.ech>=t&&i.ech<=addDays(t,15))ev2.push([i.ech,`Échéance de la facture ${f.numero}`,`${i.cl?.nom||''} · ${cur(i.solde)}`,'factures','warn'])});
+  D.commandes.forEach(c=>{if(!D.cargaisons.some(g=>g.commande===c.id)&&c.fen1&&c.fen1<=lim&&(c.fen2||c.fen1)>=t)ev2.push([c.fen1,`Navire attendu : ${get('produits',c.produit)?.nom||''} ${fmt(c.quantite)} MT`,`${c.numero} · fenêtre ${fd(c.fen1)} – ${fd(c.fen2)}`,'commandes','info'])});
+  D.chauffeurs.forEach(c=>{const i=chfInfo(c);if(i.ok&&i.hseFin<=lim)ev2.push([i.hseFin,`Formation HSE à renouveler : ${c.nom}`,c.transporteur||'','chauffeurs','warn']);if(i.ok&&c.permis_validite<=lim)ev2.push([c.permis_validite,`Fin de validité du permis : ${c.nom}`,'','chauffeurs','warn'])});
+  D.camions.forEach(c=>{if(c.statut!=='Suspendu'&&c.cert_validite>=t&&c.cert_validite<=lim)ev2.push([c.cert_validite,`Certificat du camion ${c.immat} à renouveler`,c.transporteur||'','camions','warn'])});
+  ev2.sort((a,b)=>a[0].localeCompare(b[0]));
+  return vh('Tableau de bord',`${esc(CFG.nom||'')} · situation au ${fd(t)}${S.site!=='all'?' · '+esc(S.site):''}.`)+(e||`
+   <div class="kpis k4">
+    ${kpi('Stock en cuves',fmt(mt)+' MT',`${fmt(st)} m³ sur ${fmt(cap)} m³ (${fmt(cap?st/cap*100:0,1)} %)`,'acc','drop')}
+    ${kpi('Volume disponible',fmt(cap-st)+' m³','Place libre dans les cuves en service','','tank')}
+    ${kpi('Valeur du stock',cur(val),'Aux prix de référence','','cost')}
+    ${kpi('Activité logistique',fmt(rot.length)+' rotations',`${ncam} camion(s) · 30 derniers jours`,'','truck')}
+    ${kpi('Écarts de jaugeage',(em>0?'+':'')+fmt(em,1)+' MT',cur(ev)+' · 30 derniers jours',em<0?'bad':'','gauge')}
+    ${kpi('Chiffre d\'affaires facturé',cur(ca),'Factures des 30 derniers jours','','inv')}
+    ${kpi('Créances ouvertes',cur(ouv),'dont échues : '+cur(ech),ech>0?'bad':'','wallet')}
+    ${kpi('Charges d\'exploitation',cur(dep+sal),`Dépenses ${cur(dep)} · salaires ${cur(sal)} · 30 j`,'','pay')}
+   </div>
+   <div class="grid2">
+    <section class="panel"><div class="vh"><h2 class="sec">Flux d'entrées et de sorties (MT)</h2><div class="seg" role="group" aria-label="Période">${[[30,'30 j'],[90,'90 j'],[0,'Tout']].map(([v,tx])=>`<button data-per="${v}" class="${S.period===v?'on':''}">${tx}</button>`).join('')}</div></div>
+     <div class="chartbox"><canvas id="chFlux" aria-label="Évolution des entrées et sorties"></canvas></div>
+     <p class="sub" style="margin:0">${S.period===30?'Par jour':S.period===90?'Par semaine':'Par mois'}. Les livraisons CIF (du navire au client) s'affichent en cliquant sur la légende.</p></section>
+    <section class="panel"><h2 class="sec">Répartition du stock par produit</h2><div class="chartbox sm"><canvas id="chDonut" aria-label="Répartition du stock"></canvas></div></section>
+   </div>
+   <div class="grid2">
+    <section class="panel"><h2 class="sec">Alertes ${A.length?chip(String(A.length),'bad'):chip('aucune','ok')}</h2>
+     <div class="alerts">${A.length?A.slice(0,8).map(a=>`<button class="al ${a[0]}" data-go="${a[2]}"><span class="k"></span><span>${esc(a[1])}</span></button>`).join(''):'<p class="sub">Aucune cuve sous son seuil, aucune facture échue, documents de transport à jour.</p>'}${A.length>8?`<button class="btn" data-bell>Voir les ${A.length} alertes</button>`:''}</div></section>
+    <section class="panel"><h2 class="sec">Niveau des cuves</h2>${cu.map(c=>{const i=cuveInfo(c);return `<div class="lvl"><span class="code">${esc(c.code)}</span><div class="bar"><i style="width:${Math.min(100,Math.max(0,i.pct*100))}%;background:${esc(i.p?.couleur||'#888')}"></i></div><span class="num">${fmt(i.pct*100)} %</span></div>`}).join('')||'<p class="sub">Aucune cuve en service.</p>'}</section>
+   </div>
+   <div class="grid2 eq">
+    <section class="panel"><h2 class="sec">Derniers mouvements</h2><div>${mvts.map(m=>`<div class="mv"><span><span class="mono">${fd(m.d)}</span> · ${m.t==='in'?'Réception':esc(m.r.type)} ${m.x.p?'· '+esc(m.x.p.code):''}<span class="sub">${m.t==='in'?'Cuve '+esc(m.x.cu?.code||''):m.r.type==='Transfert interne'?'vers '+esc(get('cuves',m.r.cuve_dest)?.code||''):esc(get('clients',m.r.client)?.nom||'Interne')}</span></span><b class="num" style="color:var(--${m.t==='in'?'in':'out'})">${m.t==='in'?'+':'−'}${fmt(m.x.mt,1)} MT</b></div>`).join('')||'<p class="sub">Aucun mouvement.</p>'}</div></section>
+    <section class="panel"><h2 class="sec">${ic('cal',16)}Échéances des 30 prochains jours</h2><div class="alerts">${ev2.slice(0,7).map(x=>`<button class="al ${x[4]}" data-go="${x[3]}"><span class="k"></span><span><small>${fd(x[0])}</small>${esc(x[1])}${x[2]?`<small>${esc(x[2])}</small>`:''}</span></button>`).join('')||'<p class="sub">Rien de prévu dans les 30 prochains jours.</p>'}</div></section>
+   </div>`);
+}
+
+/* ---------------------------------------------------------------- analyse des stocks */
+function anaData(){return memo('ana:'+S.aper,()=>{
+  const t=today(),per=S.aper,since=addDays(t,-per);
+  const cu=D.cuves.filter(siteOk);const rows=[];
+  D.produits.slice().sort((a,b)=>(a.categorie||'').localeCompare(b.categorie||'')||(a.code||'').localeCompare(b.code||'')).forEach(p=>{
+    const cs=cu.filter(c=>c.produit===p.id);if(!cs.length)return;const ids=new Set(cs.map(c=>c.id));
+    const stock=cs.reduce((a,c)=>a+Math.max(0,cuveInfo(c).mt),0),cap=cs.reduce((a,c)=>a+num(c.capacite),0)*densP(p)/1000;
+    const ins=D.receptions.filter(r=>ids.has(r.cuve)&&isFluxIn(r)&&r.date>since).reduce((a,r)=>a+recInfo(r).mt,0);
+    const outs=D.sorties.filter(o=>ids.has(o.cuve)&&isFluxOut(o)&&o.date>since).reduce((a,o)=>a+sorInfo(o).mt,0);
+    const st0=cs.reduce((a,c)=>a+Math.max(0,mtOf(cuveStock(c.id,since),densP(p))),0);
+    const ec=D.jaugeages.filter(j=>ids.has(j.cuve)&&j.valide&&(j.date||'').slice(0,10)>since).reduce((a,j)=>a+jauInfo(j).emt,0);
+    const jour=outs/per, auto=jour>0?stock/jour:null, moy=(stock+st0)/2, rot=moy>0?outs/moy:0;
+    const etat=!outs?['Sans mouvement','mut']:auto<num(CFG.rupture_jours)?['Rupture imminente','bad']:auto<2*num(CFG.rupture_jours)?['À surveiller','warn']:['Correct','ok'];
+    rows.push({p,stock,cap,ins,outs,jour,auto,rot,ec,val:stock*num(p.prix_ref),etat,freinte:ins?ec/ins:0});
+  });
+  const tot=rows.reduce((a,r)=>{['stock','ins','outs','ec','val','cap'].forEach(k=>a[k]+=r[k]);return a},{stock:0,ins:0,outs:0,ec:0,val:0,cap:0});
+  const sur=D.cargaisons.filter(g=>(g.nor||'').slice(0,10)>since).reduce((a,g)=>a+cgoInfo(g).msur,0);
+  const ecv=D.jaugeages.filter(j=>(j.date||'').slice(0,10)>since&&siteOk(get('cuves',j.cuve))).reduce((a,j)=>a+jauInfo(j).val,0);
+  const cl={};D.sorties.filter(o=>o.client&&o.date>since&&(S.site==='all'||sorInfo(o).site===S.site)).forEach(o=>{cl[o.client]=(cl[o.client]||0)+sorInfo(o).mt});
+  const top=Object.entries(cl).map(([k,v])=>({c:get('clients',k),mt:v})).filter(x=>x.c).sort((a,b)=>b.mt-a.mt);
+  return {rows,tot,sur,ecv,top,since};
+})}
+function monthly(n=12){
+  const t=today();const ms=[];let d=new Date(t.slice(0,7)+'-15T12:00:00');for(let i=0;i<n;i++){ms.unshift(iso(d).slice(0,7));d.setMonth(d.getMonth()-1)}
+  return ms.map(m=>{const inM=s=>(s||'').slice(0,7)===m;
+    const r={m,ins:0,outs:0,cif:0,ec:0,fac:0,enc:0,ach:0,dep:0,sal:0};
+    D.receptions.forEach(x=>{if(inM(x.date)&&isFluxIn(x))r.ins+=recInfo(x).mt});
+    D.sorties.forEach(o=>{if(!inM(o.date))return;const s=sorInfo(o);if(o.type==='Livraison CIF')r.cif+=s.mt;else if(isFluxOut(o))r.outs+=s.mt});
+    D.jaugeages.forEach(j=>{if(j.valide&&inM(j.date))r.ec+=jauInfo(j).emt});
+    D.factures.forEach(f=>{if(inM(f.date))r.fac+=facInfo(f).ttc});
+    D.paiements.forEach(p=>{if(!inM(p.date))return;if(p.sens==='Encaissement')r.enc+=num(p.montant);else r.ach+=num(p.montant)});
+    D.depenses.forEach(x=>{if(inM(x.date))r.dep+=num(x.montant)});
+    D.paie.forEach(p=>{if(p.periode===m)r.sal+=paieInfo(p).net});
+    return r}).filter((r,i,a)=>i===a.length-1||Object.keys(r).some(k=>k!=='m'&&Math.abs(r[k])>0.0001));
+}
+function vAnalyse(){
+  const e=emptyDb();if(e)return vh('Analyse des stocks','')+e;
+  const A=anaData();const T0=A.tot;const per=S.aper;
+  const autoG=T0.outs>0?T0.stock/(T0.outs/per):null;const rotG=T0.stock>0?T0.outs/T0.stock:0;const fr=T0.ins?T0.ec/T0.ins:0;
+  const M=monthly();
+  const cuR=D.cuves.filter(siteOk).filter(c=>c.statut==='Active').map(c=>({c,i:cuveInfo(c)})).filter(x=>x.i.auto!==null).sort((a,b)=>a.i.auto-b.i.auto);
+  const maxTop=A.top[0]?.mt||1;const sumTop=A.top.reduce((a,x)=>a+x.mt,0)||1;
+  return vh('Analyse des stocks',`Rotation, autonomie, freinte et valorisation sur les ${per} derniers jours. Calculs hors livraisons CIF et hors transferts entre cuves.`,
+    `<div class="seg" role="group" aria-label="Période d'analyse">${[[30,'30 j'],[90,'90 j'],[365,'12 mois']].map(([v,tx])=>`<button data-aper="${v}" class="${per===v?'on':''}">${tx}</button>`).join('')}</div><button class="btn" data-sys="xlmois">${ic('dl')}Synthèse Excel</button>`)+
+  `<div class="kpis k3">
+    ${kpi('Rotation des stocks',fmt(rotG,2)+' ×','Sorties de la période ÷ stock actuel','acc','chart')}
+    ${kpi('Autonomie moyenne',autoG===null?'–':fmt(autoG,0)+' jours','Au rythme moyen des sorties',autoG!==null&&autoG<num(CFG.rupture_jours)?'bad':'','cal')}
+    ${kpi('Freinte (pertes nettes)',fmt(fr*100,2)+' %',`${fmt(T0.ec,1)} MT d'écarts validés / ${fmt(T0.ins,0)} MT reçus`,fr<-TOL?'bad':'','loss')}
+    ${kpi('Valorisation du stock',cur(T0.val),fmt(T0.stock,0)+' MT aux prix de référence','','cost')}
+    ${kpi('Coût des écarts de jaugeage',cur(A.ecv),'Sur la période',A.ecv<0?'bad':'','gauge')}
+    ${kpi('Surestaries',cur(A.sur),'Navires arrivés sur la période',A.sur>0?'warn':'','ship')}
+  </div>
+  <div class="grid2">
+   <section class="panel"><h2 class="sec">Stock, entrées et sorties par produit (MT)</h2><div class="chartbox"><canvas id="chProd" aria-label="Indicateurs par produit"></canvas></div></section>
+   <section class="panel"><h2 class="sec">Principaux clients (MT livrées, CIF compris)</h2><div>${A.top.slice(0,7).map((x,k)=>`<div class="rank"><span class="n">${k+1}</span><span>${esc(x.c.nom)}<span class="sub">${esc(x.c.type||'')}</span></span><b class="num">${fmt(x.mt,0)} MT <span class="sub" style="display:inline">${fmt(x.mt/sumTop*100,0)} %</span></b><div class="bar"><i style="width:${x.mt/maxTop*100}%;background:var(--accent)"></i></div></div>`).join('')||'<p class="sub">Aucune livraison sur la période.</p>'}</div></section>
+  </div>
+  <h2 class="sec">${ic('drop',16)}Indicateurs par produit</h2>
+  <div class="tw"><table class="rt"><thead><tr><th>Produit</th><th class="num">Stock (MT)</th><th class="num">Entrées (MT)</th><th class="num">Sorties (MT)</th><th class="num">Sorties / jour</th><th class="num">Autonomie</th><th class="num">Rotation</th><th class="num">Freinte</th><th class="num">${esc(T('Valeur (¤)'))}</th><th>État</th></tr></thead><tbody>${
+    A.rows.map(r=>`<tr><td data-l="Produit"><div>${prodCell(r.p)}</div></td><td class="num" data-l="Stock (MT)"><div>${fmt(r.stock,1)}</div></td><td class="num" data-l="Entrées (MT)"><div>${fmt(r.ins,1)}</div></td><td class="num" data-l="Sorties (MT)"><div>${fmt(r.outs,1)}</div></td><td class="num" data-l="Sorties / jour"><div>${fmt(r.jour,1)}</div></td><td class="num" data-l="Autonomie"><div>${r.auto===null?'–':fmt(r.auto,0)+' j'}</div></td><td class="num" data-l="Rotation"><div>${fmt(r.rot,2)} ×</div></td><td class="num" data-l="Freinte"><div>${fmt(r.freinte*100,2)} %</div></td><td class="num" data-l="Valeur"><div>${fmt(r.val)}</div></td><td data-l="État"><div>${chip(r.etat[0],r.etat[1])}</div></td></tr>`).join('')||'<tr><td colspan="10" class="empty">Aucun produit en cuve.</td></tr>'
+  }</tbody></table></div>
+  <section class="panel"><h2 class="sec">${ic('tank',16)}Risque de rupture par cuve <span class="sub" style="display:inline">seuil d'alerte : ${fmt(CFG.rupture_jours)} jours</span></h2>${cuR.map(x=>{const a=x.i.auto;const k=a<num(CFG.rupture_jours)?'var(--bad)':a<2*num(CFG.rupture_jours)?'var(--warn)':'var(--ok)';return `<div class="lvl" style="grid-template-columns:70px minmax(0,1fr) 70px"><span class="code">${esc(x.c.code)}</span><div class="bar"><i style="width:${Math.min(100,a/60*100)}%;background:${k}"></i></div><span class="num">${fmt(Math.floor(a))} j</span></div>`}).join('')||'<p class="sub">Aucune cuve active avec des sorties sur les 30 derniers jours.</p>'}<p class="sub" style="margin:0">Autonomie = stock actuel ÷ moyenne journalière des sorties des 30 derniers jours (barre pleine = 60 jours ou plus).</p></section>
+  <h2 class="sec">${ic('cal',16)}Synthèse mensuelle</h2>
+  <div class="tw"><table><thead><tr><th>Mois</th><th class="num">Entrées (MT)</th><th class="num">Sorties (MT)</th><th class="num">CIF (MT)</th><th class="num">Écarts (MT)</th><th class="num">${esc(T('Facturé (¤)'))}</th><th class="num">${esc(T('Encaissé (¤)'))}</th><th class="num">${esc(T('Achats payés (¤)'))}</th><th class="num">${esc(T('Dépenses (¤)'))}</th><th class="num">${esc(T('Salaires nets (¤)'))}</th></tr></thead><tbody>${
+    M.map(r=>`<tr><td>${esc(fm(r.m))}</td><td class="num">${fmt(r.ins)}</td><td class="num">${fmt(r.outs)}</td><td class="num">${fmt(r.cif)}</td><td class="num">${fmt(r.ec,1)}</td><td class="num">${fmt(r.fac)}</td><td class="num">${fmt(r.enc)}</td><td class="num">${fmt(r.ach)}</td><td class="num">${fmt(r.dep)}</td><td class="num">${fmt(r.sal)}</td></tr>`).join('')}</tbody>
+   <tfoot><tr><td>Total</td>${['ins','outs','cif','ec','fac','enc','ach','dep','sal'].map(k=>`<td class="num">${fmt(M.reduce((a,r)=>a+r[k],0),k==='ec'?1:0)}</td>`).join('')}</tr></tfoot></table></div>`;
+}
+
+/* ================================================================ configuration et sauvegarde */
+const CFG_F=[
+ ['Identité du dépôt',[F('nom','Nom affiché','text',{req:1}),F('adresse','Adresse','text'),F('contact','Contact (téléphone, e-mail)','text')]],
+ ['Monnaie et taxes',[F('devise','Devise','sel',{opts:['USD','EUR','DJF','XOF','XAF','MAD','AED','ETB','KES','GBP']}),F('tva','TVA par défaut sur les factures (%)','num'),F('retenue','Retenues salariales par défaut (%)','num',{h:'Utilisé pour préparer la paie du mois.'})]],
+ ['Règles de contrôle',[F('tolerance','Tolérance d\'écart jaugeage et transport (%)','num'),F('hse_mois','Validité d\'une formation HSE (mois)','num'),F('rupture_jours','Alerte de rupture sous (jours d\'autonomie)','num')]],
+ ['Sites',[F('site1','Site 1 (livraisons CIF rattachées à ce site)','text',{req:1}),F('site2','Site 2','text'),F('site3','Site 3','text')]]
+];
+function vConfig(){
+  const e=emptyDb();const n=COLLS.filter(c=>c!=='config').map(c=>[c,D[c].length]);const tot=n.reduce((a,x)=>a+x[1],0);
+  return vh('Configuration et sauvegarde','Paramètres du dépôt, emplacement des données, sauvegarde et restauration.')+(e||`
+  <form class="panel" id="cfgform" novalidate>${CFG_F.map(([g,fs])=>`<h2 class="sec">${esc(g)}</h2><div class="cfg">${fs.map(f=>fieldHtml(f,CFG[f.k],null)).join('')}</div>`).join('')}
+   <div class="err" id="cfgerr"></div><div class="filters">${canWrite?`<button class="btn pri" type="submit">${ic('gear')}Enregistrer la configuration</button>`:''}<span class="sub">Renommer un site met à jour les cuves qui y sont rattachées.</span></div></form>
+  <div class="grid2">
+   <section class="panel"><h2 class="sec">${ic('box',16)}Où sont les données ?</h2>${MODE==='serveur'
+    ?`<p style="margin:0">${chip('Mode serveur','ok')} Les données sont partagées entre tous les appareils connectés à ce serveur. Elles sont enregistrées dans le fichier <span class="code">data/base.json</span> du dossier de l'application, avec une copie automatique chaque jour dans <span class="code">data/sauvegardes</span> (30 jours conservés).</p>`
+    :`<p style="margin:0">${chip('Mode local','warn')} Les données sont enregistrées <b>uniquement dans ce navigateur, sur cet appareil</b>. Elles ne sont pas partagées et peuvent être perdues si les données du navigateur sont effacées. Pour travailler à plusieurs, utilisez le mode serveur (voir le fichier README).</p>`}
+    <div class="filters"><button class="btn pri" data-sys="backup">${ic('dl')}Télécharger une sauvegarde</button><button class="btn" data-sys="restore">${ic('in')}Restaurer une sauvegarde</button><input type="file" id="restfile" accept=".json,application/json" hidden></div>
+    <div class="filters"><button class="btn" data-sys="demo">Recharger les données d'exemple</button><button class="btn dan" data-sys="wipe">${ic('del')}Vider la base</button></div></section>
+   <section class="panel"><h2 class="sec">Contenu de la base ${chip(fmt(tot)+' enregistrements','info')}</h2><div class="tw"><table><tbody>${n.map(([c,k])=>`<tr><td>${esc(TITLES[c])}</td><td class="num">${fmt(k)}</td></tr>`).join('')}</tbody></table></div></section>
+  </div>
+  <section class="panel"><h2 class="sec">Méthodes de calcul</h2><div class="tw"><table><tbody>
+    <tr><td>Conversion volume → tonnes</td><td>m³ à 15 °C × densité à 15 °C ÷ 1 000</td></tr>
+    <tr><td>Stock d'une cuve</td><td>stock initial + réceptions − sorties (hors CIF) + écarts de jaugeage validés</td></tr>
+    <tr><td>Autonomie</td><td>stock ÷ moyenne journalière des sorties des 30 derniers jours</td></tr>
+    <tr><td>Surestaries</td><td>(durée NOR → fin de déchargement − temps de planche) ÷ 24 × taux journalier</td></tr>
+    <tr><td>Facture</td><td>quantité (unité du produit) × prix − remise, + TVA</td></tr></tbody></table></div>
+    <p class="sub" style="margin:0">Le volume à 15 °C est saisi par l'utilisateur (pas de calcul par les tables ASTM) et la hauteur jaugée n'est convertie en volume que par une estimation linéaire, en attendant les barèmes réels des cuves.</p></section>
+  <p class="sub">Pilote Stocks version ${VERSION} · prototype · ${MODE==='serveur'?'mode serveur':'mode local'}</p>`);
+}
+async function saveCfg(){
+  const v={};CFG_F.forEach(([,fs])=>fs.forEach(f=>{const el=document.getElementById('f_'+f.k);v[f.k]=f.t==='num'?num(el.value):String(el.value).trim()}));
+  if(!v.nom||!v.site1){$('#cfgerr').textContent='Le nom et le site 1 sont obligatoires.';return}
+  if(v.tolerance<0||v.hse_mois<1||v.rupture_jours<0){$('#cfgerr').textContent='Valeurs de contrôle invalides.';return}
+  const old=Object.assign({},CFG);const out=Object.assign({},IDX.config.get('general')||{},v,{maj:new Date().toISOString()});delete out.id;
+  try{
+    await db.collection('config').doc('general').set(out);
+    for(const k of ['site1','site2','site3']){if(old[k]&&v[k]&&old[k]!==v[k])for(const cu of D.cuves.filter(c=>c.site===old[k])){const d=Object.assign({},cu,{site:v[k]});delete d.id;await db.collection('cuves').doc(cu.id).set(d)}}
+    toast('Configuration enregistrée.');
+  }catch(e){$('#cfgerr').textContent='Échec de l\'enregistrement. Réessayez.'}
+}
+
+/* ================================================================ rendu */
+const VIEWS={dashboard:vDash,analyse:vAnalyse,cuves:vCuves,livre:vLivre,pertes:vPertes,config:vConfig};
+let pending=false;
+function schedule(){if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;render()})}
+function render(){
+  const ae=document.activeElement;if(ae&&ae.closest&&ae.closest('#cfgform')){reindex();buildMenu();renderNotif();return} /* ne pas effacer une configuration en cours de saisie */
+  reindex();buildMenu();
+  $('#crumb-g').textContent=GROUP[S.route]||'';$('#crumb-t').textContent=TITLES[S.route]||'';
+  destroyCharts();
+  const v=VIEWS[S.route]?VIEWS[S.route]():vList(S.route);$('#view').innerHTML=v;
+  if(S.route==='dashboard'){drawFlux();drawDonut()}
+  if(S.route==='analyse')drawProd();
+  const b=[];
+  if(CFG.demo&&!S.nobanner)b.push(`<span><b>Données fictives de démonstration.</b> ${MODE==='local'?'Vos saisies restent dans ce navigateur, sur cet appareil.':'Elles sont partagées par tous les utilisateurs de ce serveur.'}</span>${canWrite?'<button class="btn" data-sys="wipe">Vider pour commencer</button>':''}<button class="ib" data-sys="nobanner" title="Masquer ce message" style="margin-left:auto">${ic('x')}</button>`);
+  else if(MODE==='local'&&dbState==='ready'&&!CFG.demo&&!S.nobanner)b.push('<span>Mode local : les données sont enregistrées dans ce navigateur uniquement. Pensez à télécharger des sauvegardes (Configuration).</span><button class="ib" data-sys="nobanner" title="Masquer ce message" style="margin-left:auto">'+ic('x')+'</button>');
+  $('#banner').innerHTML=b.join(' ');
+  const sy=$('#sync');sy.innerHTML=MODE==='local'?'<i class="off"></i>Mode local<br>ce navigateur':!online?'<i class="off"></i>Reconnexion…':dbState==='ready'?`<i></i>Serveur partagé<br>${lastSync?pad(lastSync.getHours())+':'+pad(lastSync.getMinutes()):''}`:'<i class="off"></i>Connexion…';
+  $('#foot').textContent='Version '+VERSION+' · '+(MODE==='serveur'?'mode serveur':'mode local');
+  $('#exp').disabled=!db||typeof XLSX==='undefined';
+  renderNotif();
+}
+function renderNotif(){const n=$('#notif');if(n.hidden)return;const A=alerts();
+  n.innerHTML=`<h4>Alertes ${A.length?chip(String(A.length),'bad'):chip('aucune','ok')}<button class="ib" data-closenotif title="Fermer">${ic('x')}</button></h4><div class="alerts">${A.map(a=>`<button class="al ${a[0]}" data-go="${a[2]}"><span class="k"></span><span>${esc(a[1])}<small>${esc(TITLES[a[2]]||'')}</small></span></button>`).join('')||'<p class="sub" style="margin:4px">Tout est en ordre.</p>'}</div>`}
+function toggleNotif(force){const n=$('#notif');const open=force!==undefined?force:n.hidden;n.hidden=!open;$('#bell').setAttribute('aria-expanded',String(open));if(open)renderNotif()}
+function closeNotif(){toggleNotif(false)}
+
+/* ================================================================ formulaires */
+function curVals(sch){const v={};sch.fields.forEach(f=>{const el=document.getElementById('f_'+f.k);if(!el)return;v[f.k]=f.t==='bool'?el.checked:el.value});return v}
+function optList(f,val){
+  let rows=D[f.ref].slice();if(f.filter)rows=rows.filter(r=>f.filter(r)||r.id===val);
+  rows.sort((a,b)=>LAB[f.ref](a).localeCompare(LAB[f.ref](b)));
+  return `<option value="">— Choisir —</option>`+rows.map(r=>`<option value="${esc(r.id)}"${r.id===val?' selected':''}>${esc(LAB[f.ref](r))}</option>`).join('');
+}
+function fieldHtml(f,val,rec){
+  const id='f_'+f.k;const rq=typeof f.req==='function'?'':f.req?'<i>*</i>':'';const lock=f.lock&&rec?' disabled':'';const lab=T(f.l);
+  let inp;
+  if(f.t==='sel'){const o=f.opts.slice();if(val&&!o.includes(val))o.push(val);inp=`<select id="${id}" class="inp">${o.map(x=>`<option value="${esc(x)}"${x===(val??'')?' selected':''}>${esc(x||'— Non renseignée —')}</option>`).join('')}</select>`}
+  else if(f.t==='ref')inp=`<select id="${id}" class="inp">${optList(f,val)}</select>`;
+  else if(f.t==='area')inp=`<textarea id="${id}" class="inp"${f.ph?` placeholder="${esc(f.ph)}"`:''}>${esc(val)}</textarea>`;
+  else if(f.t==='bool')return `<div class="fld chk w" data-f="${f.k}"><input id="${id}" type="checkbox"${val?' checked':''}><label for="${id}">${esc(lab)}</label></div>`;
+  else inp=`<input id="${id}" class="inp" type="${{num:'number',date:'date',dt:'datetime-local',color:'color',month:'month'}[f.t]||'text'}"${f.t==='num'?' step="any" inputmode="decimal"':''} value="${esc(val??'')}"${f.ph?` placeholder="${esc(f.ph)}"`:''}${lock}>`;
+  return `<div class="fld${f.w?' w':''}" data-f="${f.k}"><label for="${id}">${esc(lab)} ${rq}</label>${inp}${f.h?`<span class="h">${esc(f.h)}</span>`:''}</div>`;
+}
+function openForm(coll,rec,preset){
+  if(!canWrite||!db)return;const sch=SCH[coll];
+  const vals={};sch.fields.forEach(f=>{vals[f.k]=rec?rec[f.k]:(preset&&preset[f.k]!==undefined?preset[f.k]:typeof f.def==='function'?f.def():f.def??(f.t==='sel'?f.opts[0]:''))});
+  const title=(rec?'Modifier ':'Nouvelle saisie : ')+sch.one+(rec&&rec.numero?' '+rec.numero:rec&&sch.key?' '+rec[sch.key]:'');
+  $('#modal-root').innerHTML=`<div id="modal" role="dialog" aria-modal="true" aria-labelledby="dlgt"><form class="dlg" id="frm" novalidate><div class="dlg-h"><h3 id="dlgt">${esc(title)}</h3><button type="button" class="ib" data-close title="Fermer">${ic('x')}</button></div>
+   <div class="dlg-b">${sch.fields.map(f=>fieldHtml(f,vals[f.k],rec)).join('')}<div class="live" id="live"></div><div class="err" id="err"></div></div>
+   <div class="dlg-f"><button type="button" class="btn" data-close>Annuler</button><button type="submit" class="btn pri" id="savebtn">${ic('plus')}Enregistrer</button></div></form></div>`;
+  const set=(k,x)=>{const el=document.getElementById('f_'+k);if(el&&(el.value===''||el.dataset.auto)&&x!==undefined&&x!==null&&x!==''){el.value=x;el.dataset.auto='1'}};
+  $('#frm').addEventListener('input',ev=>{if(ev.target.dataset&&ev.target.dataset.auto&&ev.target.tagName==='INPUT')delete ev.target.dataset.auto});
+  const upd=ev=>{if(ev&&HOOK[coll]&&ev.type==='change')HOOK[coll](curVals(sch),set);const v=curVals(sch);sch.fields.forEach(f=>{const w=document.querySelector(`[data-f="${f.k}"]`);if(w)w.hidden=f.show?!f.show(v):false});const l=LIVE[coll];$('#live').innerHTML=l?l(v,rec):''};
+  $('#frm').addEventListener('input',upd);$('#frm').addEventListener('change',upd);upd();
+  if(!rec&&preset&&HOOK[coll])HOOK[coll](curVals(sch),set);
+  const first=$('#frm').querySelector('.dlg-b input:not([disabled]),.dlg-b select,.dlg-b textarea');if(first&&matchMedia('(pointer:fine)').matches)first.focus();
+  $('#frm').addEventListener('submit',async ev=>{ev.preventDefault();
+    const v=curVals(sch);const out={};const miss=[];
+    for(const f of sch.fields){const vis=f.show?f.show(v):true;if(!vis)continue;const req=typeof f.req==='function'?f.req(v):f.req;let x=v[f.k];
+      if(f.t==='num')x=x===''?null:num(x);if(req&&(x===''||x===null||x===undefined))miss.push(T(f.l));if(f.t==='num'&&x!==null&&x<0&&f.k!=='temperature')miss.push(T(f.l)+' (valeur négative)');out[f.k]=x}
+    if(miss.length){$('#err').textContent='À compléter : '+miss.join(', ')+'.';return}
+    const ck=CHECK[coll]&&CHECK[coll](v,rec);if(ck){$('#err').textContent=ck;return}
+    let id=rec?rec.id:null;
+    if(!rec&&sch.key){id=keyId(out[sch.key]);if(!id){$('#err').textContent='Code invalide.';return}if(IDX[coll].has(id)){$('#err').textContent=`« ${out[sch.key]} » existe déjà.`;return}}
+    if(rec&&sch.key)out[sch.key]=rec[sch.key];
+    if(!id)id=rid();
+    if(sch.pre)out.numero=rec?.numero||nextNum(coll,sch.pre);
+    if(coll==='jaugeages')out.volume_theorique=Math.round(cuveStock(out.cuve,(out.date||'').slice(0,10),rec?.id)*1000)/1000;
+    out.maj=new Date().toISOString();
+    $('#savebtn').disabled=true;
+    try{
+      await db.collection(coll).doc(id).set(out);
+      if(coll==='sorties')await syncTransfer(id,out);
+      closeModal();toast(rec?'Modifications enregistrées.':`${sch.one[0].toUpperCase()+sch.one.slice(1)} enregistré${une(sch.one)?'e':''}.`);
+    }catch(e){$('#savebtn').disabled=false;$('#err').textContent=e&&e.code==='invalid_argument'?'Enregistrement refusé : accès non autorisé.':'Échec de l\'enregistrement ('+(e&&e.code||'erreur')+'). Réessayez.'}
+  });
+}
+async function syncTransfer(id,o){ /* la réception de la cuve de destination suit le transfert interne */
+  const rid2='rt-'+id;const ex=get('receptions',rid2);
+  if(o.type!=='Transfert interne'){if(ex)await db.collection('receptions').doc(rid2).delete();return}
+  await db.collection('receptions').doc(rid2).set({numero:ex?.numero||nextNum('receptions','REC'),date:o.date,provenance:'Transfert interne',cuve:o.cuve_dest,volume:o.volume,densite:o.densite,qualite:'Conforme',operateur:o.operateur||'',document:`Transfert ${o.numero} depuis ${get('cuves',o.cuve)?.code||''}`,sortie:id,maj:o.maj});
+}
+function nextNum(coll,pre){const y=new Date().getFullYear();const p=`${pre}-${y}-`;let m=0;D[coll].forEach(r=>{if(r.numero&&r.numero.startsWith(p))m=Math.max(m,parseInt(r.numero.slice(p.length))||0)});return p+String(m+1).padStart(4,'0')}
+function closeModal(){$('#modal-root').innerHTML='';schedule()}
+function usedBy(coll,id){
+  const deps={produits:[['cuves','produit'],['commandes','produit'],['factures','produit']],cuves:[['receptions','cuve'],['sorties','cuve'],['sorties','cuve_dest'],['jaugeages','cuve'],['maintenance','cuve']],clients:[['sorties','client'],['factures','client']],
+   fournisseurs:[['commandes','fournisseur']],commandes:[['cargaisons','commande']],cargaisons:[['receptions','cargaison'],['sorties','cargaison']],factures:[['sorties','facture'],['paiements','facture']],camions:[['sorties','camion']],chauffeurs:[['sorties','chauffeur']],employes:[['paie','employe']]}[coll]||[];
+  return deps.map(([c,k])=>[c,D[c].filter(r=>r[k]===id).length]).filter(x=>x[1]);
+}
+function askDelete(coll,id){
+  const r=get(coll,id);if(!r)return;const u=usedBy(coll,id);const name=r.numero||r.code||r.immat||r.matricule||r.nom||'';
+  $('#modal-root').innerHTML=`<div id="modal" role="dialog" aria-modal="true"><div class="dlg" style="max-width:460px"><div class="dlg-h"><h3>Supprimer ${esc(SCH[coll].one)} ${esc(name)} ?</h3><button class="ib" data-close>${ic('x')}</button></div>
+   <div class="dlg-b" style="grid-template-columns:1fr">${u.length?`<div class="err">Suppression impossible : utilisé par ${u.map(([c,n])=>`${n} ${TITLES[c].toLowerCase()}`).join(', ')}. Modifiez ou supprimez d'abord ces enregistrements.</div>`:`<p style="margin:0">Cette action est définitive${MODE==='serveur'?' pour tous les utilisateurs':''}.${coll==='sorties'&&r.type==='Transfert interne'?' La réception liée dans la cuve de destination sera aussi supprimée.':''}</p>`}</div>
+   <div class="dlg-f"><button class="btn" data-close>Annuler</button>${u.length?'':`<button class="btn dan" id="cfdel">${ic('del')}Supprimer</button>`}</div></div></div>`;
+  const b=$('#cfdel');if(b)b.onclick=async()=>{b.disabled=true;try{await db.collection(coll).doc(id).delete();if(coll==='sorties'&&get('receptions','rt-'+id))await db.collection('receptions').doc('rt-'+id).delete();closeModal();toast('Supprimé.')}catch(e){b.disabled=false;toast('Suppression refusée ('+(e&&e.code||'erreur')+').')}};
+}
+function confirmBox(title,text,label,fn,danger=true){
+  $('#modal-root').innerHTML=`<div id="modal" role="dialog" aria-modal="true"><div class="dlg" style="max-width:480px"><div class="dlg-h"><h3>${esc(title)}</h3><button class="ib" data-close>${ic('x')}</button></div>
+   <div class="dlg-b" style="grid-template-columns:1fr"><p style="margin:0">${text}</p></div><div class="dlg-f"><button class="btn" data-close>Annuler</button><button class="btn ${danger?'dan':'pri'}" id="cfok">${esc(label)}</button></div></div></div>`;
+  $('#cfok').onclick=async()=>{$('#cfok').disabled=true;try{await fn();closeModal()}catch(e){$('#cfok').disabled=false;toast('Opération impossible : le serveur ne répond pas.')}};
+}
+
+/* ================================================================ exports */
+async function save(filename,data,type){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:type||'application/octet-stream'}));a.download=filename;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+}
+function sheetOf(rows){return XLSX.utils.json_to_sheet(rows.length?rows:[{}])}
+function monthRows(){return monthly(24).map(r=>({'Mois':fm(r.m),'Entrées (MT)':+r.ins.toFixed(3),'Sorties (MT)':+r.outs.toFixed(3),'Livraisons CIF (MT)':+r.cif.toFixed(3),'Écarts validés (MT)':+r.ec.toFixed(3),[T('Facturé (¤)')]:Math.round(r.fac),[T('Encaissé (¤)')]:Math.round(r.enc),[T('Achats payés (¤)')]:Math.round(r.ach),[T('Dépenses (¤)')]:Math.round(r.dep),[T('Salaires nets (¤)')]:Math.round(r.sal)}))}
+function exportXlsx(){
+  if(typeof XLSX==='undefined'){toast('Module Excel non chargé.');return}
+  const wb=XLSX.utils.book_new();
+  const stock=D.cuves.map(c=>{const i=cuveInfo(c);return {'Cuve':c.code,'Site':c.site,'Produit':i.p?.nom||'','Statut':c.statut,'Capacité (m³)':i.cap,'Stock (m³ à 15 °C)':+i.stock.toFixed(3),'Stock (MT)':+i.mt.toFixed(3),'Remplissage (%)':+(i.pct*100).toFixed(1),'Autonomie (jours)':i.auto===null?'':Math.floor(i.auto),[T('Valeur (¤)')]:Math.round(i.val)}});
+  XLSX.utils.book_append_sheet(wb,sheetOf(stock),'Etat des stocks');
+  XLSX.utils.book_append_sheet(wb,sheetOf(monthRows()),'Synthese mensuelle');
+  COLLS.forEach(c=>{const sch=SCH[c];if(!sch)return;const rows=D[c].map(r=>{const o={};if(r.numero)o['N°']=r.numero;sch.fields.forEach(f=>{let v=r[f.k];if(f.t==='ref')v=get(f.ref,v)?LAB[f.ref](get(f.ref,v)):'';if(f.t==='bool')v=v?'Oui':'Non';o[T(f.l)]=v??''});
+    if(c==='receptions')o['Tonnes (MT)']=+recInfo(r).mt.toFixed(3);if(c==='sorties')o['Tonnes (MT)']=+sorInfo(r).mt.toFixed(3);
+    if(c==='jaugeages'){o['Volume théorique (m³)']=r.volume_theorique;o['Écart (m³)']=+jauInfo(r).e.toFixed(3)}
+    if(c==='cargaisons'){const i=cgoInfo(r);o[T('Surestaries (¤)')]=Math.round(i.msur);o['Écart (MT)']=i.ecart===null?'':+i.ecart.toFixed(3)}
+    if(c==='factures'){const i=facInfo(r);o['Volume (m³)']=+i.vol.toFixed(3);o['Quantité facturée']=+i.qte.toFixed(3);o['Unité']=i.u;o[T('Total TTC (¤)')]=+i.ttc.toFixed(2);o[T('Payé (¤)')]=+i.paye.toFixed(2);o['Statut']=i.st[0]}
+    if(c==='paie'){const i=paieInfo(r);o[T('Brut (¤)')]=i.brut;o[T('Net à payer (¤)')]=i.net}
+    return o});XLSX.utils.book_append_sheet(wb,sheetOf(rows),TITLES[c].replace(/[\\/?*[\]:]/g,'').slice(0,31))});
+  save(`Pilote_Stocks_${today()}.xlsx`,XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+}
+function exportMonthly(){if(typeof XLSX==='undefined'){toast('Module Excel non chargé.');return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,sheetOf(monthRows()),'Synthese mensuelle');
+  const A=anaData();XLSX.utils.book_append_sheet(wb,sheetOf(A.rows.map(r=>({'Produit':r.p.nom,'Stock (MT)':+r.stock.toFixed(1),'Entrées (MT)':+r.ins.toFixed(1),'Sorties (MT)':+r.outs.toFixed(1),'Sorties par jour (MT)':+r.jour.toFixed(2),'Autonomie (jours)':r.auto===null?'':Math.floor(r.auto),'Rotation':+r.rot.toFixed(2),'Freinte (%)':+(r.freinte*100).toFixed(3),[T('Valeur (¤)')]:Math.round(r.val),'État':r.etat[0]}))),'Produits '+S.aper+' j');
+  save(`Synthese_${today()}.xlsx`,XLSX.write(wb,{type:'array',bookType:'xlsx'}))}
+/* --- PDF (jsPDF ne gère pas l'espace fine insécable des nombres français) */
+const pf=(n,d=0)=>fmt(n,d).replace(/[  ]/g,' ');
+const pc=(n,d=2)=>pf(n,d)+' '+(CFG.devise||'');
+const pt=s=>String(s??'').replace(/³/g,'3').replace(/[  ]/g,' ').replace(/[−]/g,'-').replace(/[^\x00-\xFF€–—’…œŒ]/g,'?');
+function pdfDoc(title,no){
+  const {jsPDF}=window.jspdf;const d=new jsPDF({unit:'mm',format:'a4'});
+  d.setFillColor(11,110,100);d.rect(0,0,210,26,'F');d.setTextColor(255,255,255);
+  d.setFont('helvetica','normal');d.setFontSize(9);d.text(pt(CFG.nom||''),14,9);
+  d.setFont('helvetica','bold');d.setFontSize(15);d.text(pt(title),14,19);
+  d.setFontSize(10);d.setFont('helvetica','normal');d.text(pt(no),196,19,{align:'right'});
+  if(CFG.adresse||CFG.contact){d.setFontSize(8);d.text(pt([CFG.adresse,CFG.contact].filter(Boolean).join(' · ')),196,9,{align:'right'})}
+  d.setFontSize(8);d.setTextColor(120,120,120);d.text('Document de travail généré par Pilote Stocks le '+fd(today())+' — sans valeur contractuelle.',14,287);d.setTextColor(30,30,30);return d;
+}
+function kv(d,y,rows,x2=80){d.setFontSize(10);rows.forEach(([k,v])=>{d.setFont('helvetica','normal');d.setTextColor(110,110,110);d.text(pt(k),14,y);d.setTextColor(30,30,30);d.setFont('helvetica','bold');d.text(pt(v??'–'),x2,y);y+=7});return y}
+function pdfBon(o){
+  const i=sorInfo(o);const d=pdfDoc('BON DE SORTIE',o.numero||'');
+  let y=kv(d,38,[['Date',fd(o.date)],['Type de sortie',o.type],['Client',get('clients',o.client)?.nom||(o.type==='Transfert interne'?'Vers '+(get('cuves',o.cuve_dest)?.code||''):'Interne')],['Produit',i.p?.nom||''],[o.type==='Livraison CIF'?'Cargaison':'Cuve source',o.type==='Livraison CIF'?((i.g?.numero||'')+' · '+(i.g?.navire||'')):(i.cu?.code||'')],
+   ['Camion',get('camions',o.camion)?.immat||'–'],['Chauffeur',get('chauffeurs',o.chauffeur)?.nom||'–'],['Nombre de fûts',o.nb_futs?pf(o.nb_futs):'–'],['Volume (m³ à 15 °C)',pf(o.volume,3)],['Densité à 15 °C',pf(num(o.densite)||densP(i.p),1)+' kg/m³'],['Quantité (MT)',pf(i.mt,3)],['N° de bon',o.bon||'–'],['Opérateur',o.operateur||'–']]);
+  y+=10;d.setDrawColor(180,180,180);['Le dépôt','Le transporteur','Le client'].forEach((t,k)=>{const x=14+k*62;d.rect(x,y,58,30);d.setFont('helvetica','normal');d.setFontSize(9);d.text(t+' (nom, signature)',x+2,y+5)});
+  save(`Bon_${o.numero||'sortie'}.pdf`,d.output('arraybuffer'),'application/pdf');
+}
+function pdfTicket(coll,r){
+  const isS=coll==='sorties';const i=isS?sorInfo(r):recInfo(r);
+  const L2=[['N°',r.numero],['Date',fd(r.date)],['Produit',i.p?.nom||'']];
+  if(isS){L2.push(['Type',r.type]);if(r.type==='Livraison CIF')L2.push(['Navire',i.g?.navire||'']);else L2.push(['Cuve',i.cu?.code||'']);
+    if(r.client)L2.push(['Client',get('clients',r.client)?.nom||'']);if(r.type==='Transfert interne')L2.push(['Vers cuve',get('cuves',r.cuve_dest)?.code||'']);
+    if(r.camion)L2.push(['Camion',get('camions',r.camion)?.immat||'']);if(r.chauffeur)L2.push(['Chauffeur',get('chauffeurs',r.chauffeur)?.nom||'']);if(r.nb_futs)L2.push(['Fûts',pf(r.nb_futs)]);if(r.bon)L2.push(['Bon',r.bon])}
+  else{L2.push(['Provenance',r.provenance||'']);L2.push(['Cuve',i.cu?.code||'']);if(r.camion)L2.push(['Camion',r.camion]);if(r.temperature!=null&&r.temperature!=='')L2.push(['Température',pf(r.temperature,1)+' °C']);L2.push(['Qualité',r.qualite||''])}
+  const Q=[['Volume 15 °C',pf(r.volume,3)+' m3'],['Densité 15 °C',pf(num(r.densite)||densP(i.p),1)],['Quantité',pf(i.mt,3)+' MT']];
+  const h=70+(L2.length+Q.length)*5+40;const {jsPDF}=window.jspdf;const d=new jsPDF({unit:'mm',format:[80,h]});
+  let y=8;const c=40;d.setFont('courier','bold');d.setFontSize(10);d.splitTextToSize(pt(CFG.nom||'Dépôt'),70).forEach(l=>{d.text(l,c,y,{align:'center'});y+=4.5});
+  d.setFont('courier','normal');d.setFontSize(7.5);if(CFG.adresse){d.splitTextToSize(pt(CFG.adresse),70).forEach(l=>{d.text(l,c,y,{align:'center'});y+=3.5})}
+  const rule=()=>{y+=1;d.setLineDashPattern([1,1],0);d.line(5,y,75,y);y+=4.5};rule();
+  d.setFont('courier','bold');d.setFontSize(10);d.text(isS?'TICKET DE SORTIE':'TICKET DE RECEPTION',c,y,{align:'center'});y+=5;d.setFontSize(8);
+  const line=([k,v],b)=>{d.setFont('courier',b?'bold':'normal');const t=d.splitTextToSize(pt(v),44);d.text(pt(k),5,y);t.forEach((l,n)=>{d.text(l,75,y+n*3.6,{align:'right'})});y+=Math.max(1,t.length)*3.6+1.2};
+  rule();L2.forEach(x=>line(x));rule();Q.forEach((x,k)=>line(x,k===2));rule();
+  line(['Opérateur',r.operateur||'–']);line(['Imprimé le',fd(today())+' '+nowDT().slice(11)]);y+=4;
+  d.setFont('courier','normal');d.text(isS?'Signature chauffeur :':'Signature livreur :',5,y);y+=12;d.text('Signature dépôt :',5,y);y+=10;rule();
+  d.setFontSize(6.5);d.text('Document de travail - Pilote Stocks',c,y,{align:'center'});
+  save(`Ticket_${r.numero||coll}.pdf`,d.output('arraybuffer'),'application/pdf');
+}
+function pdfFacture(f){
+  const i=facInfo(f);const p=get('produits',f.produit);const d=pdfDoc('FACTURE PROFORMA',f.numero||'');
+  let y=kv(d,38,[['Client',i.cl?.nom||''],['Adresse',i.cl?.adresse||'–'],['Date d\'émission',fd(f.date)],['Échéance',fd(i.ech)],['Produit',(p?.nom||'')+' · facturé en '+i.u]]);
+  y+=4;d.setFillColor(235,235,230);d.rect(14,y,182,8,'F');d.setFont('helvetica','bold');d.setFontSize(9);
+  const X=[16,40,74,130,160,194];['Date','N° sortie','Origine','Volume (m³)','Tonnes (MT)','Quantité ('+i.u+')'].forEach((h,k)=>d.text(pt(h),X[k],y+5.5,k>=3?{align:'right'}:undefined));y+=13;
+  d.setFont('helvetica','normal');i.lignes.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(o=>{if(y>230){d.addPage();y=20}const s=sorInfo(o);d.text(fd(o.date),X[0],y);d.text(pt(o.numero||''),X[1],y);d.text(pt(o.type==='Livraison CIF'?'CIF '+(s.g?.navire||''):'Cuve '+(s.cu?.code||'')),X[2],y);d.text(pf(o.volume,3),X[3],y,{align:'right'});d.text(pf(s.mt,3),X[4],y,{align:'right'});d.text(pf(qtyU(o,i.u),i.u==='Fût'?0:3),X[5],y,{align:'right'});y+=6});
+  if(y>220){d.addPage();y=20}
+  y+=4;d.line(110,y,196,y);y+=7;
+  const tot=[['Quantité totale',pf(i.qte,i.u==='Fût'?0:3)+' '+i.u],['Prix unitaire',pc(f.prix)+' / '+i.u],['Montant brut',pc(i.brut)]];
+  if(num(f.remise))tot.push([`Remise (${pf(f.remise,1)} %)`,'- '+pc(i.rem)]);
+  tot.push(['Total HT',pc(i.ht)],[`TVA (${pf(f.tva,1)} %)`,pc(i.tva)],['Total TTC',pc(i.ttc)],['Déjà réglé',pc(i.paye)],['Reste à payer',pc(i.solde)]);
+  tot.forEach(([k,v])=>{const b=k==='Total TTC'||k==='Reste à payer';d.setFont('helvetica',b?'bold':'normal');d.text(pt(k),112,y);d.text(pt(v),194,y,{align:'right'});y+=6.5});
+  if(f.note){y+=6;d.setFont('helvetica','normal');d.text(d.splitTextToSize(pt('Observations : '+f.note),182),14,y)}
+  save(`Facture_${f.numero||'proforma'}.pdf`,d.output('arraybuffer'),'application/pdf');
+}
+function pdfBulletin(r){
+  const i=paieInfo(r);const e=i.e||{};const d=pdfDoc('BULLETIN DE PAIE',r.numero||'');
+  d.setFontSize(11);d.setFont('helvetica','bold');d.text('Période : '+pt(fm(r.periode)),14,38);
+  let y=kv(d,48,[['Employé',e.nom||''],['Matricule',e.matricule||''],['Fonction',e.fonction||''],['Service',e.service||''],['Date d\'embauche',fd(e.date_embauche)]],60);
+  y+=4;d.setFillColor(235,235,230);d.rect(14,y,182,8,'F');d.setFont('helvetica','bold');d.setFontSize(9.5);d.text('Rubrique',16,y+5.5);d.text('Gains',150,y+5.5,{align:'right'});d.text('Retenues',194,y+5.5,{align:'right'});y+=14;
+  const ln=(k,g,rt,b)=>{d.setFont('helvetica',b?'bold':'normal');d.text(pt(k),16,y);if(g!==null)d.text(pc(g),150,y,{align:'right'});if(rt!==null)d.text(pc(rt),194,y,{align:'right'});y+=7};
+  ln('Salaire de base',num(r.base),null);if(num(r.primes))ln('Primes',num(r.primes),null);if(num(r.heures_sup))ln('Heures supplémentaires',num(r.heures_sup),null);
+  d.line(14,y-4,196,y-4);ln('Salaire brut',i.brut,null,true);ln('Retenues et cotisations',null,num(r.deductions));if(num(r.avance))ln('Avance sur salaire',null,num(r.avance));
+  y+=3;d.setFillColor(218,237,233);d.rect(14,y-5,182,10,'F');d.setFont('helvetica','bold');d.setFontSize(11);d.text('NET À PAYER',16,y+1.5);d.text(pc(i.net),194,y+1.5,{align:'right'});y+=16;
+  d.setFontSize(9.5);y=kv(d,y,[['Date de paiement',fd(r.date_paiement)],['Statut',r.statut||'']],60);
+  if(r.note){d.setFont('helvetica','normal');d.text(d.splitTextToSize(pt('Observations : '+r.note),182),14,y+4)}
+  y=Math.max(y+20,210);d.setDrawColor(180,180,180);['L\'employeur','L\'employé'].forEach((t,k)=>{const x=14+k*94;d.rect(x,y,88,28);d.setFont('helvetica','normal');d.setFontSize(9);d.text(t+' (signature)',x+2,y+5)});
+  save(`Bulletin_${(e.matricule||'')}_${r.periode||''}.pdf`,d.output('arraybuffer'),'application/pdf');
+}
+function doPdf(kind,coll,id){
+  if(!window.jspdf){toast('Module PDF non chargé.');return}const r=get(coll,id);if(!r)return;
+  try{if(kind==='bon')pdfBon(r);else if(kind==='ticket')pdfTicket(coll,r);else if(kind==='facture')pdfFacture(r);else if(kind==='bulletin')pdfBulletin(r)}catch(e){console.error(e);toast('Impossible de produire le PDF.')}
+}
+async function genPaie(){
+  const per=thisMonth();const emp=D.employes.filter(e=>e.statut!=='Sorti'&&!D.paie.some(p=>p.employe===e.id&&p.periode===per));
+  if(!emp.length){toast('Toutes les fiches de '+fm(per)+' existent déjà.');return}
+  confirmBox('Préparer la paie de '+fm(per)+' ?',`${emp.length} fiche(s) seront créées en <b>brouillon</b>, avec le salaire de base et ${fmt(CFG.retenue,1)} % de retenues. Vous pourrez ensuite ajouter primes, heures supplémentaires et avances.`,'Créer les fiches',async()=>{
+    const y=new Date().getFullYear(),p=`PAIE-${y}-`;let m=0;D.paie.forEach(r=>{if(r.numero&&r.numero.startsWith(p))m=Math.max(m,parseInt(r.numero.slice(p.length))||0)});
+    for(const e of emp){let id='paie-'+per+'-'+e.id;if(IDX.paie.has(id))id=rid();m++;
+      await db.collection('paie').doc(id).set({numero:p+String(m).padStart(4,'0'),employe:e.id,periode:per,base:num(e.salaire),primes:0,heures_sup:0,deductions:Math.round(num(e.salaire)*num(CFG.retenue))/100,avance:0,date_paiement:null,statut:'Brouillon',maj:new Date().toISOString()})}
+    toast(emp.length+' fiche(s) de paie préparée(s).')},false);
+}
+
+/* ================================================================ évènements */
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#notif,#bell')&&!$('#notif').hidden)closeNotif();
+  const t=e.target.closest('[data-r],[data-add],[data-edit],[data-del],[data-close],[data-go],[data-per],[data-aper],[data-jauger],[data-pdf],[data-grp],[data-menu],[data-more],[data-bell],[data-closenotif],[data-sys]');if(!t)return;
+  if(t.dataset.r)go(t.dataset.r);
+  else if(t.dataset.go)go(t.dataset.go);
+  else if(t.dataset.add)openForm(t.dataset.add,null);
+  else if(t.dataset.edit)openForm(t.dataset.edit,get(t.dataset.edit,t.dataset.id));
+  else if(t.dataset.del)askDelete(t.dataset.del,t.dataset.id);
+  else if(t.hasAttribute('data-close'))closeModal();
+  else if(t.dataset.per!==undefined){S.period=+t.dataset.per;render()}
+  else if(t.dataset.aper!==undefined){S.aper=+t.dataset.aper;render()}
+  else if(t.dataset.jauger){openForm('jaugeages',null,{cuve:t.dataset.jauger})}
+  else if(t.dataset.pdf)doPdf(t.dataset.pdf,t.dataset.coll,t.dataset.id);
+  else if(t.dataset.grp){const g=t.dataset.grp;CLOSED.has(g)?CLOSED.delete(g):CLOSED.add(g);try{localStorage.setItem('ps_grp',JSON.stringify([...CLOSED]))}catch(x){}t.parentElement.classList.toggle('closed');t.setAttribute('aria-expanded',String(!t.parentElement.classList.contains('closed')))}
+  else if(t.dataset.menu){$('#side').classList.add('open');$('#scrim').classList.add('on')}
+  else if(t.hasAttribute('data-more')){S.limit+=100;render()}
+  else if(t.hasAttribute('data-bell')){window.scrollTo(0,0);toggleNotif(true)}
+  else if(t.hasAttribute('data-closenotif'))closeNotif();
+  else if(t.dataset.sys)sysAction(t.dataset.sys);
+});
+function sysAction(a){
+  if(a==='nobanner'){S.nobanner=true;try{sessionStorage.setItem('ps_nobanner','1')}catch(e){}render();return}
+  if(!db)return;
+  if(a==='backup'){save(`pilote-stocks-sauvegarde-${today()}.json`,JSON.stringify(db.dump(),null,1),'application/json');toast('Sauvegarde téléchargée.')}
+  else if(a==='restore')$('#restfile').click();
+  else if(a==='xlmois')exportMonthly();
+  else if(a==='genpaie')genPaie();
+  else if(a==='demo')confirmBox('Charger les données d\'exemple ?','Les données actuelles seront <b>remplacées</b> par un jeu de données fictives. Téléchargez une sauvegarde avant si besoin.','Charger les exemples',async()=>{await db.replaceAll(demoData());toast('Données d\'exemple chargées.')});
+  else if(a==='wipe')confirmBox('Vider toute la base ?',`Toutes les données seront supprimées${MODE==='serveur'?' pour tous les utilisateurs':''}. La configuration du dépôt est conservée. Cette action est définitive sans sauvegarde.`,'Tout supprimer',async()=>{const c=Object.assign({},IDX.config.get('general')||{});delete c.id;delete c.demo;await db.replaceAll({config:{general:Object.assign(c,{maj:new Date().toISOString()})}});toast('Base vidée.')});
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#modal'))closeModal();else if(!$('#notif').hidden)closeNotif();else closeSide()}});
+document.addEventListener('mousedown',e=>{if(e.target.id==='modal')closeModal()});
+document.addEventListener('submit',e=>{if(e.target.id==='cfgform'){e.preventDefault();saveCfg()}});
+document.addEventListener('change',e=>{
+  if(e.target.id==='lf'){S.from=e.target.value||S.from;render()}if(e.target.id==='lt'){S.to=e.target.value||S.to;render()}
+  if(e.target.id==='restfile'&&e.target.files[0]){const f=e.target.files[0];const rd=new FileReader();
+    rd.onload=()=>{let data;try{data=JSON.parse(rd.result)}catch(err){toast('Fichier illisible : ce n\'est pas une sauvegarde Pilote Stocks.');return}
+      if(!data||typeof data!=='object'||!COLLS.some(c=>data[c])){toast('Ce fichier ne contient aucune table Pilote Stocks.');return}
+      confirmBox('Restaurer cette sauvegarde ?',`Le fichier « ${esc(f.name)} » va <b>remplacer</b> toutes les données actuelles.`,'Restaurer',async()=>{await db.replaceAll(data);toast('Sauvegarde restaurée.')})};
+    rd.readAsText(f);e.target.value=''}
+});
+let qT;$('#q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value;S.limit=100;render()},180)});
+$('#site').addEventListener('change',e=>{S.site=e.target.value;render()});
+$('#exp').addEventListener('click',exportXlsx);
+$('#bell').addEventListener('click',()=>toggleNotif());
+$('#burger').addEventListener('click',()=>{$('#side').classList.add('open');$('#scrim').classList.add('on')});
+$('#scrim').addEventListener('click',closeSide);
+/* thème clair / sombre */
+function themeIcon(){const dark=document.documentElement.dataset.theme?document.documentElement.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;$('#theme').innerHTML=ic(dark?'sun':'moon');$('#theme').title=dark?'Passer en thème clair':'Passer en thème sombre';
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=dark?'#111315':'#0B6E64'}
+try{const th=localStorage.getItem('ps_theme');if(th)document.documentElement.dataset.theme=th}catch(e){}
+themeIcon();
+$('#theme').addEventListener('click',()=>{const dark=document.documentElement.dataset.theme?document.documentElement.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme=dark?'light':'dark';try{localStorage.setItem('ps_theme',document.documentElement.dataset.theme)}catch(e){}themeIcon();render()});
+const mq=matchMedia('(prefers-color-scheme: dark)');mq.addEventListener&&mq.addEventListener('change',()=>{themeIcon();render()});
+try{const r=localStorage.getItem('ps_route');if(r&&TITLES[r])S.route=r;S.nobanner=sessionStorage.getItem('ps_nobanner')==='1'}catch(e){}
+fillSites();
+
+/* ================================================================ stockage : serveur partagé ou navigateur */
+let MODE='local',online=true;
+function demoData(){ /* données fictives, dates recalées sur aujourd'hui */
+  const src=window.EXEMPLE||{};const ref=window.EXEMPLE_REF||today();const n=daysBetween(ref,today());
+  const sh=s=>addDays(s.slice(0,10),n)+s.slice(10);const shM=p=>addDays(p+'-15',n).slice(0,7);
+  const out={};Object.entries(src).forEach(([c,docs])=>{out[c]={};Object.entries(docs).forEach(([id,d])=>{const o={};Object.entries(d).forEach(([k,v])=>{
+    o[k]=typeof v==='string'&&k==='periode'&&/^\d{4}-\d{2}$/.test(v)?shM(v):typeof v==='string'&&/^\d{4}-\d{2}-\d{2}/.test(v)&&k!=='numero'?sh(v):v});out[c][id]=o})});
+  return out;
+}
+const snapOf=(cache,c)=>({docs:Object.entries(cache[c]||{}).map(([id,d])=>({id,data:()=>d}))});
+function hub(){const subs={};return {subs,emit:(cache,c)=>(subs[c]||[]).forEach(f=>f(snapOf(cache,c))),all(cache){Object.keys(subs).forEach(c=>this.emit(cache,c))}}}
+function serverDb(){
+  const h=hub();let cache=null;
+  const es=new EventSource('api/events');
+  es.onmessage=e=>{const m=JSON.parse(e.data);online=true;if(m.type==='full'){cache=m.data;h.all(cache)}else if(cache){cache[m.coll]=cache[m.coll]||{};if(m.doc)cache[m.coll][m.id]=m.doc;else delete cache[m.coll][m.id];h.emit(cache,m.coll)}};
+  es.onerror=()=>{online=false;schedule()};
+  const call=async(method,c,id,d)=>{let r;try{r=await fetch(`api/${c}/${encodeURIComponent(id)}`,{method,headers:{'Content-Type':'application/json'},body:d?JSON.stringify(d):undefined})}catch(e){throw {code:'unavailable'}}if(!r.ok)throw {code:r.status===401||r.status===403?'invalid_argument':'unavailable'}};
+  return {collection:c=>({onSnapshot(n){(h.subs[c]=h.subs[c]||[]).push(n);if(cache)n(snapOf(cache,c));return ()=>{}},doc:id=>({set:d=>call('PUT',c,id,d),delete:()=>call('DELETE',c,id)})}),
+    async replaceAll(data){const r=await fetch('api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data,mode:'replace'})});if(!r.ok)throw new Error('import')},
+    dump:()=>cache||{}};
+}
+function localDb(){
+  const KEY='pilote_stocks_donnees_v1';const h=hub();let cache={};let first=false;
+  const read=()=>{try{const s=localStorage.getItem(KEY);first=s===null;cache=JSON.parse(s||'{}')||{}}catch(e){first=true;cache={}}};
+  const write=()=>{try{localStorage.setItem(KEY,JSON.stringify(cache))}catch(e){toast('Le navigateur refuse d\'enregistrer : espace plein ou stockage bloqué.')}};
+  read();if(first&&window.EXEMPLE){cache=demoData();write()}
+  window.addEventListener('storage',e=>{if(e.key===KEY){read();h.all(cache)}});
+  return {collection:c=>({onSnapshot(n){(h.subs[c]=h.subs[c]||[]).push(n);setTimeout(()=>n(snapOf(cache,c)),0);return ()=>{}},
+      doc:id=>({set:async d=>{(cache[c]=cache[c]||{})[id]=d;write();h.emit(cache,c)},delete:async()=>{if(cache[c])delete cache[c][id];write();h.emit(cache,c)}})}),
+    async replaceAll(data){cache=JSON.parse(JSON.stringify(data));write();COLLS.forEach(c=>h.emit(cache,c))},dump:()=>cache};
+}
+
+/* ================================================================ démarrage */
+render();
+(async()=>{
+  let srv=false;
+  if(location.protocol.startsWith('http')){try{const r=await fetch('api/ping',{cache:'no-store'});srv=r.ok&&(await r.json()).mode==='serveur'}catch(e){}}
+  MODE=srv?'serveur':'local';db=srv?serverDb():localDb();canWrite=true;
+  COLLS.forEach(c=>{db.collection(c).onSnapshot(s=>{D[c]=s.docs.map(x=>Object.assign({},x.data(),{id:x.id}));LOADED.add(c);lastSync=new Date();if(LOADED.size===COLLS.length)dbState='ready';schedule()})});
+  schedule();
+  if('serviceWorker' in navigator&&(location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname)))navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+})();
+</script>
+</body>
+</html>
